@@ -108,6 +108,29 @@ cal.addEventListener('click', (e) => {
   if (b.dataset.dia) cal.querySelector(`[data-dia="${b.dataset.dia}"]`)?.focus();
 });
 
+// Quita al escribir (o pegar) los caracteres que el campo no acepta. El servidor lo vuelve a validar.
+const FILTROS = {
+  letras: /[^\p{L} '.\-]/gu,
+  telefono: /[^0-9+]|(?!^)\+/g, // + solo al inicio
+  correo: /\s/g,
+};
+form.addEventListener('input', (e) => {
+  const campo = e.target;
+  const filtro = FILTROS[campo.dataset.solo];
+  if (!filtro) return;
+  let limpio = campo.value.replace(filtro, '');
+  if (campo.dataset.solo === 'telefono') limpio = limpio.match(/^\+?[0-9]{0,15}/)[0]; // máximo 15 dígitos
+  if (limpio === campo.value) return;
+  if (campo.type === 'email') { campo.value = limpio; return; } // los campos email no permiten mover el cursor
+  const cursor = campo.selectionStart - (campo.value.slice(0, campo.selectionStart).length - campo.value.slice(0, campo.selectionStart).replace(filtro, '').length);
+  campo.value = limpio;
+  campo.setSelectionRange(cursor, cursor);
+});
+// Personas: los campos numéricos aceptan "e", "-", "." y ","; aquí solo enteros.
+form.personas.addEventListener('keydown', (e) => {
+  if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
+});
+
 form.cabana_id.addEventListener('change', () => {
   mostrar('');
   cargarDisponibilidad();

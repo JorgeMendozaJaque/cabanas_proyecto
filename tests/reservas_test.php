@@ -20,7 +20,7 @@ function limpiar(): void
 $d = fn(int $n) => (new DateTimeImmutable(hoy_chile()))->modify("+$n day")->format('Y-m-d');
 $base = [
     'cabana_id' => 1, 'personas' => 4, 'nombre' => 'Ana Test', 'ciudad' => 'Temuco',
-    'telefono' => '+56 9 1234 5678', 'telefono2' => '', 'email' => 'ana@test.invalid', 'email2' => '',
+    'telefono' => '+56912345678', 'telefono2' => '', 'email' => 'ana@test.invalid', 'email2' => '',
 ];
 $pedir = fn(int $desde, int $hasta, array $extra = []) =>
     crear_reserva(['fecha_entrada' => $d($desde), 'fecha_salida' => $d($hasta)] + $extra + $base);
@@ -41,6 +41,21 @@ try {
     chequear(!$pedir(110, 111, ['email2' => 'malo@'])['ok'], 'rechaza correo 2 inválido');
     chequear(!$pedir(110, 111, ['telefono' => 'abc'])['ok'], 'rechaza teléfono inválido');
     chequear(!$pedir(110, 111, ['ciudad' => ''])['ok'], 'rechaza ciudad vacía');
+
+    echo "Tipo de texto por campo\n";
+    chequear(!$pedir(110, 111, ['nombre' => 'Ana 2'])['ok'], 'rechaza números en el nombre');
+    chequear(!$pedir(110, 111, ['ciudad' => 'Temuco123'])['ok'], 'rechaza números en la ciudad');
+    chequear(!$pedir(110, 111, ['nombre' => 'Ana <b>'])['ok'], 'rechaza símbolos en el nombre');
+    chequear(!$pedir(110, 111, ['telefono' => '+56 9 1234 5678'])['ok'], 'rechaza espacios en el teléfono');
+    chequear(!$pedir(110, 111, ['telefono' => '5691234567x'])['ok'], 'rechaza letras en el teléfono');
+    chequear(!$pedir(110, 111, ['telefono' => '56+912345678'])['ok'], 'rechaza + que no está al inicio');
+    chequear(!$pedir(110, 111, ['telefono' => '1234567'])['ok'], 'rechaza teléfono de 7 dígitos');
+    chequear(!$pedir(110, 111, ['telefono' => '+1234567890123456'])['ok'], 'rechaza teléfono de 16 dígitos');
+    chequear(!$pedir(110, 111, ['telefono2' => '12ab5678'])['ok'], 'rechaza letras en el teléfono 2');
+    chequear(!$pedir(110, 111, ['email' => 'ana @test.invalid'])['ok'], 'rechaza espacios en el correo');
+    chequear(!$pedir(110, 111, ['personas' => '2.5'])['ok'], 'rechaza personas con decimales');
+    $r = $pedir(110, 111, ['nombre' => "María José O'Higgins-Ñuñez", 'ciudad' => 'Puerto Montt', 'telefono' => '123456789012345', 'telefono2' => '22345678']);
+    chequear($r['ok'], 'acepta tildes, ñ, apóstrofo y guion; teléfono de 15 dígitos y de 8');
     chequear(!$pedir(110, 111, ['cabana_id' => 999])['ok'], 'rechaza cabaña inexistente');
 
     echo "Choque de fechas (ya existe una reserva del día +100 al +103)\n";

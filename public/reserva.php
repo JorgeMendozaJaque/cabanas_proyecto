@@ -24,15 +24,15 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     <div class="columnas">
       <fieldset>
         <legend>1. Tus datos</legend>
-        <label>Nombre <input name="nombre" required minlength="2" maxlength="100" autocomplete="name"></label>
-        <label>Ciudad <input name="ciudad" required minlength="2" maxlength="100" autocomplete="address-level2"></label>
+        <label>Nombre <input name="nombre" data-solo="letras" required minlength="2" maxlength="100" pattern="\p{L}[\p{L} '.\-]*" title="Solo letras, espacios, apóstrofo, punto o guion." autocomplete="name"></label>
+        <label>Ciudad <input name="ciudad" data-solo="letras" required minlength="2" maxlength="100" pattern="\p{L}[\p{L} '.\-]*" title="Solo letras, espacios, apóstrofo, punto o guion." autocomplete="address-level2"></label>
         <div class="fila">
-          <label>Teléfono 1 <input type="tel" name="telefono" required pattern="\+?[0-9 \(\)\-]{8,20}" placeholder="+56 9 1234 5678" autocomplete="tel"></label>
-          <label>Teléfono 2 <span class="opcional">(opcional)</span> <input type="tel" name="telefono2" pattern="\+?[0-9 \(\)\-]{8,20}"></label>
+          <label>Teléfono 1 <input type="tel" name="telefono" data-solo="telefono" required minlength="8" maxlength="16" pattern="\+?[0-9]{8,15}" title="Solo números (8 a 15), con + opcional al inicio." placeholder="+56912345678" inputmode="tel" autocomplete="tel"></label>
+          <label>Teléfono 2 <span class="opcional">(opcional)</span> <input type="tel" name="telefono2" data-solo="telefono" minlength="8" maxlength="16" pattern="\+?[0-9]{8,15}" title="Solo números (8 a 15), con + opcional al inicio." inputmode="tel"></label>
         </div>
         <div class="fila">
-          <label>Correo 1 <input type="email" name="email" required maxlength="254" autocomplete="email"></label>
-          <label>Correo 2 <span class="opcional">(opcional)</span> <input type="email" name="email2" maxlength="254"></label>
+          <label>Correo 1 <input type="email" name="email" data-solo="correo" required maxlength="254" autocomplete="email"></label>
+          <label>Correo 2 <span class="opcional">(opcional)</span> <input type="email" name="email2" data-solo="correo" maxlength="254"></label>
         </div>
       </fieldset>
 
@@ -49,7 +49,7 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
             </select>
           </label>
           <label class="corto">Personas <span class="opcional">(máx. <span id="capacidad"><?= $e($cabanas[0]['capacidad']) ?></span>)</span>
-            <input type="number" name="personas" min="1" max="<?= $e($cabanas[0]['capacidad']) ?>" value="1" required inputmode="numeric">
+            <input type="number" name="personas" min="1" max="<?= $e($cabanas[0]['capacidad']) ?>" value="1" step="1" required inputmode="numeric">
           </label>
         </div>
 

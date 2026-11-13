@@ -44,7 +44,6 @@ legend { padding: 0 6px; font-weight: 600; }
 
 label { display: block; margin-bottom: 12px; font-size: .95rem; font-weight: 500; }
 .opcional { color: var(--suave); font-weight: 400; }
-
 input, select {
   display: block;
   width: 100%;

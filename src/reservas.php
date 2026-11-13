@@ -28,10 +28,14 @@ function validar_reserva(array $r): ?string
 {
     if (!$r['cabana_id']) return 'Elige una cabaña.';
     if (!$r['personas'] || $r['personas'] < 1) return 'Indica cuántas personas vienen.';
+    // Letras de cualquier idioma (tildes, ñ), espacios, apóstrofo, punto y guion. Sin números.
+    $letras = "/^\p{L}[\p{L} '.-]*$/u";
     if (mb_strlen($r['nombre']) < 2 || mb_strlen($r['nombre']) > 100) return 'Escribe tu nombre.';
+    if (!preg_match($letras, $r['nombre'])) return 'El nombre solo puede tener letras.';
     if (mb_strlen($r['ciudad']) < 2 || mb_strlen($r['ciudad']) > 100) return 'Escribe tu ciudad.';
+    if (!preg_match($letras, $r['ciudad'])) return 'La ciudad solo puede tener letras.';
 
-    $telefono = '/^\+?[0-9 ()-]{8,20}$/';
+    $telefono = '/^\+?[0-9]{8,15}$/'; // máximo internacional: 15 dígitos
     if (!preg_match($telefono, $r['telefono'])) return 'El teléfono 1 no es válido.';
     if ($r['telefono2'] !== null && !preg_match($telefono, $r['telefono2'])) return 'El teléfono 2 no es válido.';
 
@@ -60,8 +64,8 @@ function crear_reserva(array $datos): array
     $r = [
         'cabana_id' => filter_var($datos['cabana_id'] ?? null, FILTER_VALIDATE_INT),
         'personas' => filter_var($datos['personas'] ?? null, FILTER_VALIDATE_INT),
-        'nombre' => $texto('nombre'),
-        'ciudad' => $texto('ciudad'),
+        'nombre' => preg_replace('/ {2,}/', ' ', $texto('nombre')),
+        'ciudad' => preg_replace('/ {2,}/', ' ', $texto('ciudad')),
         'telefono' => $texto('telefono'),
         'telefono2' => $texto('telefono2') ?: null,
         'email' => $texto('email'),

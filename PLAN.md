@@ -89,6 +89,7 @@ El cierre de días del admin usa la misma transacción: bloquea la cabaña y rev
 9. **Datos de transferencia** (banco, RUT, cuenta), email del admin, credenciales de MySQL y API key de Resend van en `config.php`.
 10. La disponibilidad pública devuelve solo rangos ocupados o cerrados, nunca nombres, correos ni el motivo del cierre.
 11. **Riesgo de la opción B:** como una solicitud aparta fechas sin pagar, alguien podría bloquear días con solicitudes falsas. Se mitiga con el captcha (Parte 5) y con el botón Rechazar, que las libera.
+13. **Tipo de texto por campo** (se filtra al escribir, lo valida el HTML y lo vuelve a validar el servidor): nombre y ciudad solo letras (con tildes y ñ), espacios, apóstrofo, punto y guion, de 2 a 100 caracteres; teléfonos solo números, de 8 a 15 dígitos, con `+` opcional al inicio y sin espacios; correos sin espacios, máximo 254; personas solo enteros.
 12. **Calendario hecho a mano** en JS (una grilla por mes), sin librerías. El `<input type="date">` del navegador no permite marcar días deshabilitados.
 
 ## Plan por partes
