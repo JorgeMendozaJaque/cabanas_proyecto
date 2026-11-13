@@ -1,4 +1,4 @@
-# Cabañas Proyecto
+# Proyecto
 
 Plantilla de proyecto con el modo **Ponytail** ya configurado: el agente de IA escribe solo el código que la tarea necesita, reutiliza lo que ya existe y deja un test pequeño en la lógica importante.
 
