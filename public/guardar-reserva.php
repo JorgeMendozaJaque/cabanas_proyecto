@@ -9,7 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $resultado = crear_reserva($_POST);
-    if (!$resultado['ok']) http_response_code(empty($resultado['ocupado']) ? 422 : 409);
+    if ($resultado['ok']) {
+        // Solo quien hizo la reserva puede ver su página de confirmación (no se expone por id en la URL).
+        session_name('cabanas_reserva');
+        session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS'])]);
+        session_start();
+        $_SESSION['reserva_id'] = $resultado['id'];
+    } else {
+        http_response_code(empty($resultado['ocupado']) ? 422 : 409);
+    }
 } catch (Throwable $e) {
     error_log((string) $e);
     http_response_code(500);

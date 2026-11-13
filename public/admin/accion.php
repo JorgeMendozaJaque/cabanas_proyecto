@@ -6,10 +6,9 @@ exigir_post_csrf();
 $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
 $accion = (string) ($_POST['accion'] ?? '');
 $mensajes = [
-    'aceptar' => 'Reserva #%d aceptada. Plazo de pago: ' . PLAZO_PAGO_HORAS . ' horas.',
+    'aceptar_abono' => 'Reserva #%d aceptada con abono. El saldo se paga al llegar.',
+    'aceptar_total' => 'Reserva #%d aceptada con pago total.',
     'rechazar' => 'Reserva #%d rechazada. Las fechas quedaron libres.',
-    'pagada' => 'Reserva #%d marcada como pagada.',
-    'cancelar' => 'Reserva #%d cancelada. Las fechas quedaron libres.',
 ];
 
 if ($id && isset($mensajes[$accion]) && cambiar_estado($id, $accion)) {

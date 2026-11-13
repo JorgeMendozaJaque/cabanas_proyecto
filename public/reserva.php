@@ -15,12 +15,12 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 <main class="reserva">
   <a class="volver" href="./">← Volver</a>
   <h1>Reserva tu cabaña</h1>
-  <p class="intro">Completa tus datos, elige tus fechas y envía la solicitud. Las fechas quedan apartadas mientras la revisamos y te respondemos por correo.</p>
+  <p class="intro">Completa tus datos, elige tus fechas y envía la solicitud. Las fechas quedan apartadas por 48 horas: para confirmar, transfiere un abono del <?= (int) config()['abono_porcentaje'] ?>% y paga el resto al llegar.</p>
 
   <?php if (!$cabanas): ?>
     <p class="mensaje error">Por ahora no hay cabañas disponibles.</p>
   <?php else: ?>
-  <form id="form-reserva">
+  <form id="form-reserva" data-abono="<?= (int) config()['abono_porcentaje'] ?>">
     <div class="columnas">
       <fieldset>
         <legend>1. Tus datos</legend>

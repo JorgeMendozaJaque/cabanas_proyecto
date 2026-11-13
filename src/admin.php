@@ -1,15 +1,14 @@
 <?php
 require_once __DIR__ . '/reservas.php';
 
-const PLAZO_PAGO_HORAS = 48;
-// acción => [estado actual requerido, estado nuevo]
+const PLAZO_PAGO_HORAS = 48; // desde que se envía la solicitud
+// acción => [estado actual requerido, estado nuevo, columna que se guarda como "pagado"]
 const TRANSICIONES = [
-    'aceptar' => ['pendiente', 'aceptada'],
-    'rechazar' => ['pendiente', 'rechazada'],
-    'pagada' => ['aceptada', 'pagada'],
-    'cancelar' => ['aceptada', 'cancelada'],
+    'aceptar_abono' => ['pendiente', 'aceptada', 'abono'],
+    'aceptar_total' => ['pendiente', 'aceptada', 'monto'],
+    'rechazar' => ['pendiente', 'rechazada', null],
 ];
-const ESTADOS = ['pendiente', 'aceptada', 'pagada', 'rechazada', 'cancelada'];
+const ESTADOS = ['pendiente', 'aceptada', 'rechazada'];
 
 function iniciar_sesion(): void
 {
@@ -91,8 +90,10 @@ function ahora_chile(): string
 function cambiar_estado(int $id, string $accion): bool
 {
     if (!isset(TRANSICIONES[$accion])) return false;
-    [$desde, $hasta] = TRANSICIONES[$accion];
-    $st = db()->prepare('UPDATE reservas SET estado = ?, aceptada_en = IF(? = \'aceptada\', ?, aceptada_en) WHERE id = ? AND estado = ?');
+    [$desde, $hasta, $pagado] = TRANSICIONES[$accion];
+    // $pagado sale de la constante (abono o monto), nunca del usuario.
+    $st = db()->prepare('UPDATE reservas SET estado = ?, pagado = ' . ($pagado ?? 'pagado') . ',
+                         aceptada_en = IF(? = \'aceptada\', ?, aceptada_en) WHERE id = ? AND estado = ?');
     $st->execute([$hasta, $hasta, ahora_chile(), $id, $desde]);
     return $st->rowCount() === 1;
 }

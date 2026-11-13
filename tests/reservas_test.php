@@ -11,15 +11,22 @@ function chequear(bool $ok, string $que): void
     if (!$ok) $fallas++;
 }
 
+// Las pruebas usan su propia cabaña, para no chocar con reservas reales de la base local.
+db()->exec("INSERT INTO cabanas (nombre, capacidad, precio_noche) VALUES ('Cabaña de prueba', 6, 80000)");
+$C = (int) db()->lastInsertId();
+
 function limpiar(): void
 {
+    global $C;
+    db()->exec("DELETE FROM reservas WHERE cabana_id = $C");
+    db()->exec("DELETE FROM bloqueos WHERE cabana_id = $C");
     db()->exec("DELETE FROM reservas WHERE email LIKE '%@test.invalid'");
     db()->exec("DELETE FROM bloqueos WHERE motivo = 'test'");
 }
 
 $d = fn(int $n) => (new DateTimeImmutable(hoy_chile()))->modify("+$n day")->format('Y-m-d');
 $base = [
-    'cabana_id' => 1, 'personas' => 4, 'nombre' => 'Ana Test', 'ciudad' => 'Temuco',
+    'cabana_id' => $C, 'personas' => 4, 'nombre' => 'Ana Test', 'ciudad' => 'Temuco',
     'telefono' => '+56912345678', 'telefono2' => '', 'email' => 'ana@test.invalid', 'email2' => '',
 ];
 $pedir = fn(int $desde, int $hasta, array $extra = []) =>
@@ -29,7 +36,7 @@ limpiar();
 try {
     echo "Validaciones\n";
     $r = $pedir(100, 103);
-    chequear($r['ok'] && $r['noches'] === 3 && $r['monto'] === 240000, 'reserva válida: 3 noches = $240.000');
+    chequear($r['ok'] && $r['noches'] === 3 && $r['monto'] === 240000 && $r['abono'] === 120000, 'reserva válida: 3 noches = $240.000, abono $120.000');
     $fila = db()->query("SELECT estado, telefono2, email2 FROM reservas WHERE id = {$r['id']}")->fetch();
     chequear($fila === ['estado' => 'pendiente', 'telefono2' => null, 'email2' => null], 'queda pendiente y los opcionales vacíos como NULL');
     chequear(!$pedir(110, 111, ['personas' => 7])['ok'], 'rechaza más personas que la capacidad');
@@ -67,11 +74,11 @@ try {
     chequear($pedir(100, 103)['ok'], 'una rechazada libera las fechas');
 
     echo "Días cerrados por el admin (bloqueo del +120 al +122, inclusive)\n";
-    db()->exec("INSERT INTO bloqueos (cabana_id, fecha_inicio, fecha_fin, motivo) VALUES (1, '{$d(120)}', '{$d(122)}', 'test')");
+    db()->exec("INSERT INTO bloqueos (cabana_id, fecha_inicio, fecha_fin, motivo) VALUES ($C, '{$d(120)}', '{$d(122)}', 'test')");
     chequear(!$pedir(122, 123)['ok'], 'rechaza dormir la noche del último día cerrado');
     chequear($pedir(123, 124)['ok'], 'acepta llegar el día después del cierre');
     chequear($pedir(119, 120)['ok'], 'acepta salir el primer día cerrado');
-    $rangos = dias_ocupados(1);
+    $rangos = dias_ocupados($C);
     chequear(in_array(['desde' => $d(120), 'hasta' => $d(123)], $rangos, true), 'la disponibilidad muestra el cierre como noches [+120, +123)');
     chequear(array_keys($rangos[0]) === ['desde', 'hasta'], 'la disponibilidad no expone datos de clientes');
 
@@ -79,7 +86,7 @@ try {
     $c = (require __DIR__ . '/../config.php')['db'];
     $otra = new PDO("mysql:host={$c['host']};dbname={$c['nombre']};charset=utf8mb4", $c['usuario'], $c['clave']);
     $otra->beginTransaction();
-    $otra->query('SELECT id FROM cabanas WHERE id = 1 FOR UPDATE'); // la "primera" solicitud tiene la cabaña
+    $otra->query("SELECT id FROM cabanas WHERE id = $C FOR UPDATE"); // la "primera" solicitud tiene la cabaña
     $proc = proc_open(
         [PHP_BINARY, '-r', 'require "src/reservas.php"; echo json_encode(crear_reserva(json_decode($argv[1], true)));', '--',
          json_encode(['fecha_entrada' => $d(150), 'fecha_salida' => $d(152)] + $base)],
@@ -87,14 +94,15 @@ try {
     );
     sleep(1);
     chequear(proc_get_status($proc)['running'], 'la segunda solicitud espera a la primera');
-    $otra->exec("INSERT INTO reservas (cabana_id, nombre, ciudad, telefono, email, fecha_entrada, fecha_salida, personas, monto)
-                 VALUES (1, 'Primera', 'Temuco', '+56911111111', 'primera@test.invalid', '{$d(150)}', '{$d(152)}', 2, 160000)");
+    $otra->exec("INSERT INTO reservas (cabana_id, nombre, ciudad, telefono, email, fecha_entrada, fecha_salida, personas, monto, abono)
+                 VALUES ($C, 'Primera', 'Temuco', '+56911111111', 'primera@test.invalid', '{$d(150)}', '{$d(152)}', 2, 160000, 80000)");
     $otra->commit();
     $segunda = json_decode(stream_get_contents($pipes[1]), true);
     proc_close($proc);
     chequear(($segunda['ok'] ?? null) === false && !empty($segunda['ocupado']), 'la segunda se rechaza: sin overbooking');
 } finally {
     limpiar();
+    db()->exec("DELETE FROM cabanas WHERE id = $C");
 }
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodo bien\n";

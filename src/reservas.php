@@ -12,6 +12,12 @@ function fecha_valida(string $f): bool
         && checkdate((int) substr($f, 5, 2), (int) substr($f, 8, 2), (int) substr($f, 0, 4));
 }
 
+// Abono mínimo (porcentaje de config.php), redondeado hacia arriba al peso.
+function abono(int $monto): int
+{
+    return intdiv($monto * config()['abono_porcentaje'] + 99, 100);
+}
+
 function hoy_chile(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone('America/Santiago')))->format('Y-m-d');
@@ -56,7 +62,7 @@ function validar_reserva(array $r): ?string
 
 /**
  * Valida y guarda una solicitud como 'pendiente'.
- * Devuelve ['ok' => true, 'id', 'noches', 'monto'] o ['ok' => false, 'error', 'ocupado'?].
+ * Devuelve ['ok' => true, 'id', 'noches', 'monto', 'abono'] o ['ok' => false, 'error', 'ocupado'?].
  */
 function crear_reserva(array $datos): array
 {
@@ -101,13 +107,14 @@ function crear_reserva(array $datos): array
 
         $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
         $r['monto'] = $noches * $cabana['precio_noche'];
+        $r['abono'] = abono($r['monto']);
         $db->prepare(
-            'INSERT INTO reservas (cabana_id, nombre, ciudad, telefono, telefono2, email, email2, fecha_entrada, fecha_salida, personas, monto)
-             VALUES (:cabana_id, :nombre, :ciudad, :telefono, :telefono2, :email, :email2, :fecha_entrada, :fecha_salida, :personas, :monto)'
+            'INSERT INTO reservas (cabana_id, nombre, ciudad, telefono, telefono2, email, email2, fecha_entrada, fecha_salida, personas, monto, abono)
+             VALUES (:cabana_id, :nombre, :ciudad, :telefono, :telefono2, :email, :email2, :fecha_entrada, :fecha_salida, :personas, :monto, :abono)'
         )->execute($r);
         $id = (int) $db->lastInsertId();
         $db->commit();
-        return ['ok' => true, 'id' => $id, 'noches' => $noches, 'monto' => $r['monto']];
+        return ['ok' => true, 'id' => $id, 'noches' => $noches, 'monto' => $r['monto'], 'abono' => $r['abono']];
     } finally {
         if ($db->inTransaction()) $db->rollBack();
     }

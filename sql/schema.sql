@@ -22,8 +22,10 @@ CREATE TABLE reservas (
   fecha_entrada DATE NOT NULL,
   fecha_salida DATE NOT NULL, -- no cuenta como noche
   personas INT NOT NULL CHECK (personas > 0),
-  monto INT NOT NULL, -- CLP, lo calcula el servidor
-  estado ENUM('pendiente','aceptada','rechazada','pagada','cancelada') NOT NULL DEFAULT 'pendiente',
+  monto INT NOT NULL, -- CLP, total de la estadía, lo calcula el servidor
+  abono INT NOT NULL, -- mínimo a transferir en 48 h (porcentaje de config.php), no reembolsable
+  pagado INT NULL, -- lo que transfirió: el abono o el total; el resto se paga al llegar
+  estado ENUM('pendiente','aceptada','rechazada','pagada','cancelada') NOT NULL DEFAULT 'pendiente', -- 'pagada' y 'cancelada' ya no se usan
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   aceptada_en DATETIME NULL, -- desde aquí corren las 48 h para pagar
   FOREIGN KEY (cabana_id) REFERENCES cabanas(id),

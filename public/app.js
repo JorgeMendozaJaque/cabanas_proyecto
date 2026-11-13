@@ -88,7 +88,9 @@ function dibujar() {
   else {
     const n = noches(entrada, salida);
     const precio = +form.cabana_id.selectedOptions[0].dataset.precio;
-    resumen.textContent = `Del ${legible(entrada)} al ${legible(salida)}: ${n} ${n === 1 ? 'noche' : 'noches'}, total ${pesos(n * precio)}.`;
+    const total = n * precio;
+    const abono = Math.ceil((total * form.dataset.abono) / 100);
+    resumen.textContent = `Del ${legible(entrada)} al ${legible(salida)}: ${n} ${n === 1 ? 'noche' : 'noches'}, total ${pesos(total)}. Abono para confirmar: ${pesos(abono)}.`;
   }
 }
 
@@ -145,9 +147,8 @@ form.addEventListener('submit', async (e) => {
   try {
     const r = await (await fetch('guardar-reserva.php', { method: 'POST', body: new FormData(form) })).json();
     if (r.ok) {
-      form.reset();
-      await cargarDisponibilidad();
-      mostrar(`¡Solicitud enviada! Tus fechas quedaron apartadas (${r.noches} ${r.noches === 1 ? 'noche' : 'noches'}, total ${pesos(r.monto)}). Te responderemos por correo.`, 'ok');
+      location.href = 'confirmacion.php';
+      return;
     } else {
       if (r.ocupado) await cargarDisponibilidad();
       mostrar(r.error, 'error');

@@ -25,15 +25,15 @@ Un servicio para enviar correos desde código. Cuando pasa algo (una reserva nue
 2. **La primera solicitud en llegar aparta las fechas** (opción B, decidida). Al enviarla, las fechas quedan bloqueadas y nadie más puede pedirlas. No se aceptan fechas que choquen con una reserva `pendiente`, `aceptada` o `pagada`, ni con días cerrados por el admin.
 3. Login de admin.
 4. Panel con la lista de reservas, filtrable por estado.
-5. Botones Aceptar, Rechazar, Pagada y Cancelar.
+5. **Abono:** para confirmar, el cliente transfiere al menos el 50% (porcentaje en `config.php`) dentro de 48 h desde que envía la solicitud, o el total si prefiere. El saldo se paga al llegar. **El abono no es reembolsable**: es la garantía.
+5b. Botones del panel, solo para pendientes: **Aceptar · abono**, **Aceptar · pago total** (se guarda cuánto pagó, para saber el saldo al llegar) y **Rechazar** (si no llega el abono en 48 h o por otro motivo).
 6. **Cierre de días para mantenimiento:** el admin cierra un rango de días de una cabaña (con un motivo opcional) y puede volver a abrirlo. No se puede cerrar un rango que ya tenga reservas `pendiente`, `aceptada` o `pagada`.
 7. Correos, todos con Resend. Los del cliente van al correo 1 y, si lo dejó, también al correo 2:
    - **Al admin:** cuando entra una solicitud nueva.
    - **Al cliente, solicitud recibida:** confirma que la solicitud llegó y que las fechas quedaron apartadas mientras se revisa.
-   - **Al cliente, aceptada:** datos de transferencia, monto y plazo de pago (48 h).
-   - **Al cliente, rechazada.**
-   - **Al cliente, pagada:** confirmación final de la reserva.
-   - **Al cliente, cancelada:** avisa que la reserva se anuló y que las fechas se liberaron.
+   - **Al cliente, solicitud recibida:** datos de transferencia, abono, saldo y plazo de 48 h (lo mismo que la página de confirmación).
+   - **Al cliente, aceptada:** reserva confirmada, cuánto pagó y el saldo a pagar al llegar.
+   - **Al cliente, rechazada:** las fechas se liberaron.
 
 No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir agregar cabañas o admins sin cambiar código, y mantener el panel protegido sin exponer datos personales.
 
@@ -56,11 +56,10 @@ No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir
 
 ## Estados
 
-`pendiente` → `aceptada` → `pagada`
-`pendiente` → `rechazada` (libera las fechas)
-`aceptada` → `cancelada` (si no llega el pago en 48 h; libera las fechas)
+`pendiente` → `aceptada` (llegó el abono o el total)
+`pendiente` → `rechazada` (no llegó el abono en 48 h u otro motivo; libera las fechas)
 
-Bloquean fechas: `pendiente`, `aceptada` y `pagada`. Las liberan: `rechazada` y `cancelada`. La cancelación por falta de pago la hace el admin a mano.
+Bloquean fechas: `pendiente` y `aceptada`. Las libera: `rechazada`. El rechazo por falta de pago lo hace el admin a mano; el panel marca en rojo las pendientes con el plazo vencido. Los valores `pagada` y `cancelada` siguen en el ENUM de la base pero ya no se usan.
 
 ## Regla de choque de fechas
 
@@ -101,7 +100,7 @@ Se avanza parte por parte. Cada una termina con algo que se puede probar, y el u
 | **1. Base** | Estructura de carpetas, `.gitignore`, `sql/schema.sql`, `config.example.php`, conexión PDO | Encender MySQL (`brew services start mysql`), crear la base y ejecutar el SQL |
 | **2. Formulario** | PHP que valida y guarda (con el bloqueo de la cabaña), PHP de disponibilidad, formulario con calendario, CSS para celular | Cargar cabañas y probar reservas que chocan |
 | **3. Panel admin** | Login, script para crear admins, lista con filtro, botones Aceptar, Rechazar, Pagada y Cancelar, cierre y reapertura de días | Crear su usuario admin con el script |
-| **4. Correos** | Los 6 correos con Resend (nueva al admin; recibida, aceptada, rechazada, pagada y cancelada al cliente) | Crear la cuenta en Resend y obtener la API key |
+| **4. Correos** | Los 4 correos con Resend (nueva al admin; recibida, aceptada y rechazada al cliente) | Crear la cuenta en Resend y obtener la API key |
 | **5. Publicación** | Captcha (Cloudflare Turnstile), guía de subida al hosting | Elegir hosting, dominio y DNS |
 
 En desarrollo se usa el servidor que trae PHP: `php -S localhost:8000 -t public`.
@@ -118,4 +117,6 @@ Queda fuera, a propósito: precios por temporada, cancelación automática, What
 - **Landing** en `public/index.html`: HTML estático con espacios vacíos para fotos reales (instrucciones en un comentario al inicio del archivo; las fotos van en `public/fotos/`) y el botón "Reserva aquí" al final, que lleva a `reserva.php`. Prueba: `php tests/reservas_test.php`. Límites agregados: máximo 30 noches por reserva y hasta 365 días hacia adelante.
 - **Parte 3 lista y probada, esperando revisión del usuario:** `src/admin.php` (sesión, login, CSRF, cambios de estado, días cerrados), `crear_admin.php` (crea un admin o cambia su contraseña), y `public/admin/` (`login.php`, `index.php`, `accion.php`, `bloqueo.php`, `salir.php`). Se agregó la columna `reservas.aceptada_en` para mostrar el plazo de pago de 48 h. Prueba: `php tests/admin_test.php`.
 - El usuario debe crear su admin: `php crear_admin.php su@correo.cl`.
+- **Página de confirmación** (`public/confirmacion.php`): al reservar, el cliente pasa a una página con el resumen, los datos de transferencia (desde `config.php`, por ahora genéricos) y "Volver al inicio". Solo la ve quien hizo la reserva (se guarda en su sesión, no va el id en la URL). Indica transferir al recibir la confirmación por correo.
+- **Abono del 50%** implementado: columnas `reservas.abono` y `reservas.pagado`, `abono_porcentaje` en `config.php`, confirmación con abono/saldo/política, panel con Aceptar · abono / Aceptar · pago total / Rechazar. Las pruebas usan una cabaña temporal propia para no chocar con datos reales.
 - **Siguiente paso: Parte 4 (correos con Resend).**

@@ -6,11 +6,8 @@ $vista = ($_GET['vista'] ?? '') === 'dias' ? 'dias' : 'reservas';
 $estado = in_array($_GET['estado'] ?? '', ESTADOS, true) ? $_GET['estado'] : null;
 $conteo = contar_por_estado();
 $bloqueos = listar_bloqueos();
-if ($vista === 'reservas') {
-    $reservas = listar_reservas($estado);
-} else {
-    $cabanas = db()->query('SELECT id, nombre FROM cabanas ORDER BY id')->fetchAll();
-}
+$reservas = $vista === 'reservas' ? listar_reservas($estado) : [];
+$cabanas = $vista === 'dias' ? db()->query('SELECT id, nombre FROM cabanas ORDER BY id')->fetchAll() : [];
 $aviso = tomar_aviso();
 $csrf = token_csrf();
 $ahora = ahora_chile();
@@ -19,9 +16,11 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $pesos = fn($n) => '$' . number_format((int) $n, 0, ',', '.');
 $fecha = fn($f) => date('d-m-Y', strtotime($f));
 $fechaHora = fn($f) => date('d-m-Y H:i', strtotime($f));
-$botones = [
-    'pendiente' => [['aceptar', 'Aceptar', ''], ['rechazar', 'Rechazar', '¿Rechazar esta solicitud? Las fechas quedarán libres.']],
-    'aceptada' => [['pagada', 'Marcar pagada', '¿Confirmas que llegó la transferencia?'], ['cancelar', 'Cancelar', '¿Cancelar esta reserva? Las fechas quedarán libres.']],
+// Solo las pendientes tienen acciones: aceptar al recibir el abono o el total, o rechazar.
+$botones = fn(array $r) => [
+    ['aceptar_abono', 'Aceptar · abono ' . $pesos($r['abono']), '¿Recibiste el abono de ' . $pesos($r['abono']) . '? Saldo al llegar: ' . $pesos($r['monto'] - $r['abono']) . '.'],
+    ['aceptar_total', 'Aceptar · pago total ' . $pesos($r['monto']), '¿Recibiste el pago total de ' . $pesos($r['monto']) . '?'],
+    ['rechazar', 'Rechazar', '¿Rechazar esta solicitud? Las fechas quedarán libres.'],
 ];
 ?>
 <!doctype html>
@@ -75,7 +74,7 @@ $botones = [
     <div class="lista-reservas">
       <?php foreach ($reservas as $r):
         $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
-        $vence = $r['aceptada_en'] ? date('Y-m-d H:i:s', strtotime($r['aceptada_en'] . ' +' . PLAZO_PAGO_HORAS . ' hours')) : null;
+        $vence = date('Y-m-d H:i:s', strtotime($r['creada_en'] . ' +' . PLAZO_PAGO_HORAS . ' hours'));
       ?>
         <article class="reserva-card">
           <div class="reserva-cabecera">
@@ -87,21 +86,26 @@ $botones = [
             <strong><?= $fecha($r['fecha_entrada']) ?> → <?= $fecha($r['fecha_salida']) ?></strong>
             · <?= $noches ?> <?= $noches === 1 ? 'noche' : 'noches' ?> · <?= (int) $r['personas'] ?> pers. · <?= $e($r['cabana']) ?>
           </p>
-          <p class="reserva-monto"><?= $pesos($r['monto']) ?></p>
+          <dl class="reserva-montos">
+            <dt>Total</dt><dd><?= $pesos($r['monto']) ?></dd>
+            <?php if ($r['estado'] === 'aceptada' && $r['pagado'] !== null): ?>
+              <dt>Pagado</dt><dd><?= $pesos($r['pagado']) ?></dd>
+              <dt>Saldo al llegar</dt><dd class="saldo"><?= $r['monto'] > $r['pagado'] ? $pesos($r['monto'] - $r['pagado']) : 'Nada, pagó todo' ?></dd>
+            <?php else: ?>
+              <dt>Abono mínimo</dt><dd><?= $pesos($r['abono']) ?></dd>
+            <?php endif ?>
+          </dl>
           <ul class="reserva-contacto">
             <li><a href="tel:<?= $e($r['telefono']) ?>"><?= $e($r['telefono']) ?></a><?php if ($r['telefono2']): ?> · <a href="tel:<?= $e($r['telefono2']) ?>"><?= $e($r['telefono2']) ?></a><?php endif ?></li>
             <li><a href="mailto:<?= $e($r['email']) ?>"><?= $e($r['email']) ?></a><?php if ($r['email2']): ?> · <a href="mailto:<?= $e($r['email2']) ?>"><?= $e($r['email2']) ?></a><?php endif ?></li>
           </ul>
           <p class="reserva-meta">Solicitada el <?= $fechaHora($r['creada_en']) ?></p>
-          <?php if ($r['estado'] === 'aceptada' && $vence): ?>
+          <?php if ($r['estado'] === 'pendiente'): ?>
             <p class="reserva-plazo <?= $vence < $ahora ? 'vencido' : '' ?>">
-              <?= $vence < $ahora ? 'Plazo de pago vencido el' : 'Plazo de pago hasta el' ?> <?= $fechaHora($vence) ?>
+              <?= $vence < $ahora ? 'Plazo del abono vencido el' : 'Plazo del abono hasta el' ?> <?= $fechaHora($vence) ?>
             </p>
-          <?php endif ?>
-
-          <?php if (isset($botones[$r['estado']])): ?>
             <div class="reserva-acciones">
-              <?php foreach ($botones[$r['estado']] as [$accion, $texto, $confirmar]): ?>
+              <?php foreach ($botones($r) as [$accion, $texto, $confirmar]): ?>
                 <form method="post" action="accion.php" <?= $confirmar ? 'onsubmit="return confirm(' . $e(json_encode($confirmar)) . ')"' : '' ?>>
                   <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
                   <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
