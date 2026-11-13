@@ -104,7 +104,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 
 .resumen { margin: 12px 0 0; font-weight: 500; }
 
-button[type="submit"] {
+#form-reserva button[type="submit"] {
   width: 100%;
   padding: 14px;
   border: 0;
@@ -116,7 +116,7 @@ button[type="submit"] {
   font-size: 1.05rem;
   cursor: pointer;
 }
-button[type="submit"]:disabled { opacity: .6; cursor: default; }
+#form-reserva button[type="submit"]:disabled { opacity: .6; cursor: default; }
 
 .mensaje { margin: 12px 0 0; min-height: 1.5em; }
 .mensaje.error { color: var(--error); font-weight: 500; }
@@ -214,3 +214,89 @@ button[type="submit"]:disabled { opacity: .6; cursor: default; }
 .subir:focus-visible { outline: 3px solid var(--verde); outline-offset: 3px; }
 
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+/* Panel admin */
+.login { max-width: 400px; margin: 0 auto; padding: 32px 16px; }
+.tarjeta { padding: 16px; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--tarjeta); }
+.login .tarjeta { margin-top: 16px; }
+
+.admin-barra {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 16px; background: var(--verde); color: #fff;
+}
+.admin-barra div { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.admin-barra a { color: #fff; }
+.admin-barra form { margin: 0; }
+.admin-barra button { padding: 6px 14px; border: 1px solid rgba(255, 255, 255, .6); border-radius: 8px; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+.admin-email { opacity: .85; font-size: .9rem; overflow-wrap: anywhere; }
+
+.admin { max-width: 1100px; margin: 0 auto; padding: 16px 16px 48px; }
+.admin h1 { margin-bottom: 12px; }
+.admin section + section { margin-top: 40px; }
+.admin-bloqueos h2 { margin: 0 0 4px; color: var(--verde); }
+
+.aviso { padding: 12px 14px; border-radius: var(--radio); font-weight: 500; }
+.aviso.ok { background: var(--verde-claro); color: var(--ok); }
+.aviso.error { background: #fbe4e2; color: var(--error); }
+
+.filtros { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+.filtros a {
+  flex: none; padding: 6px 12px; border: 1px solid var(--borde); border-radius: 999px;
+  background: #fff; color: var(--texto); text-decoration: none; font-size: .95rem;
+}
+.filtros a span { margin-left: 4px; color: var(--suave); }
+.filtros a[aria-current="page"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+.filtros a[aria-current="page"] span { color: #dcebe1; }
+
+.vacio { color: var(--suave); }
+.lista-reservas { display: grid; gap: 12px; }
+@media (min-width: 720px) { .lista-reservas { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1080px) { .lista-reservas { grid-template-columns: repeat(3, 1fr); } }
+
+.reserva-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--tarjeta); }
+.reserva-card h2 { margin: 4px 0 0; font-size: 1.15rem; }
+.reserva-card h2 small { color: var(--suave); font-weight: 400; font-size: .9rem; }
+.reserva-card p { margin: 0; }
+.reserva-cabecera { display: flex; justify-content: space-between; align-items: center; }
+.reserva-id, .reserva-meta { color: var(--suave); font-size: .85rem; }
+.reserva-monto { font-weight: 700; font-size: 1.1rem; color: var(--verde); }
+.reserva-contacto { margin: 0; padding: 0; list-style: none; font-size: .95rem; overflow-wrap: anywhere; }
+.reserva-contacto a { color: var(--texto); }
+.reserva-plazo { padding: 6px 10px; border-radius: 8px; background: #fff6dc; color: #7a5300; font-size: .9rem; }
+.reserva-plazo.vencido { background: #fbe4e2; color: var(--error); font-weight: 600; }
+
+.estado { padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.estado-pendiente { background: #fff1c7; color: #7a5300; }
+.estado-aceptada { background: #dbe9fb; color: #1f4f8a; }
+.estado-pagada { background: var(--verde-claro); color: var(--ok); }
+.estado-rechazada, .estado-cancelada { background: #ecebe8; color: #5f5f5f; }
+
+.reserva-acciones { display: flex; gap: 8px; margin-top: 8px; }
+.reserva-acciones form { flex: 1; margin: 0; }
+.reserva-acciones button, .accion-reabrir {
+  width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--borde);
+  background: #fff; color: var(--texto); font: inherit; font-weight: 600; cursor: pointer;
+}
+.accion-aceptar, .accion-pagada { background: var(--verde) !important; border-color: var(--verde) !important; color: #fff !important; }
+.accion-rechazar, .accion-cancelar { color: var(--error) !important; }
+
+.form-bloqueo { max-width: 560px; margin-bottom: 16px; }
+.form-bloqueo button { padding: 10px 18px; border: 0; border-radius: 8px; background: var(--verde); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.lista-bloqueos { display: grid; gap: 8px; max-width: 560px; margin: 0; padding: 0; list-style: none; }
+.lista-bloqueos li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--borde); border-radius: var(--radio); background: #fff; }
+.lista-bloqueos form { margin: 0; }
+.accion-reabrir { width: auto; padding: 8px 14px; }
+.login button[type="submit"] { width: 100%; padding: 12px; border: 0; border-radius: var(--radio); background: var(--verde); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+
+/* Pestañas del panel */
+.pestanas { display: flex; gap: 4px; margin: 0 0 16px; border-bottom: 2px solid var(--borde); }
+.pestanas a {
+  margin-bottom: -2px; padding: 10px 16px;
+  border-bottom: 3px solid transparent;
+  color: var(--suave); font-weight: 600; text-decoration: none;
+}
+.pestanas a span { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: #ecebe8; font-size: .8rem; }
+.pestanas a:hover { color: var(--texto); }
+.pestanas a[aria-current="page"] { border-bottom-color: var(--verde); color: var(--verde); }
+.pestanas a[aria-current="page"] span { background: var(--verde-claro); }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

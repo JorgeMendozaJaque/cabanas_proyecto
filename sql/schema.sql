@@ -25,6 +25,7 @@ CREATE TABLE reservas (
   monto INT NOT NULL, -- CLP, lo calcula el servidor
   estado ENUM('pendiente','aceptada','rechazada','pagada','cancelada') NOT NULL DEFAULT 'pendiente',
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  aceptada_en DATETIME NULL, -- desde aquí corren las 48 h para pagar
   FOREIGN KEY (cabana_id) REFERENCES cabanas(id),
   CHECK (fecha_salida > fecha_entrada),
   INDEX (cabana_id, estado, fecha_entrada)
