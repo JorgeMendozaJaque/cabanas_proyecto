@@ -113,4 +113,6 @@ Queda fuera, a propósito: precios por temporada, cancelación automática, What
 - Reglas del agente en `AGENTS.md`: modo Ponytail, mínimo código necesario y respuestas en español.
 - Instalados con Homebrew: PHP 8.5 (con `pdo_mysql`, `curl` y `mbstring`) y MySQL. Composer no está y no hace falta.
 - **Parte 1 lista y probada:** MySQL corre con `brew services` (usuario `root` sin clave, solo local). Base `cabanas` creada desde `sql/schema.sql`, `config.php` local creado, conexión PDO y restricciones de la base verificadas. Cargada "Cabaña 1" (6 personas, $80.000 por noche); la segunda se agrega con el `INSERT` comentado en `sql/schema.sql`.
-- **Siguiente paso: Parte 2.**
+- **Parte 2 lista y probada, esperando revisión del usuario:** `src/reservas.php` (validación, transacción con bloqueo de la cabaña, disponibilidad), `public/guardar-reserva.php`, `public/disponibilidad.php`, `public/reserva.php` (formulario: primero los datos, después cabaña y fechas; lado a lado desde 900 px de ancho), `public/app.js` y `public/estilos.css`.
+- **Landing** en `public/index.html`: HTML estático con espacios vacíos para fotos reales (instrucciones en un comentario al inicio del archivo; las fotos van en `public/fotos/`) y el botón "Reserva aquí" al final, que lleva a `reserva.php`. Prueba: `php tests/reservas_test.php`. Límites agregados: máximo 30 noches por reserva y hasta 365 días hacia adelante.
+- **Siguiente paso: Parte 3 (panel admin).**

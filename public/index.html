@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cabañas familiares</title>
+  <meta name="description" content="Cabañas familiares para descansar. Revisa la disponibilidad y reserva en línea.">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<!--
+  CÓMO AGREGAR LAS FOTOS REALES
+  1. Copia la foto en la carpeta public/fotos/ (por ejemplo: public/fotos/exterior.jpg).
+  2. Cambia el <div class="foto vacia" ...>...</div> correspondiente por:
+       <img class="foto" src="fotos/exterior.jpg" alt="Describe lo que se ve en la foto">
+  Usa fotos .jpg o .webp de máximo unos 300 KB para que la página cargue rápido en el celular.
+-->
+<body class="landing">
+
+<header class="portada">
+  <!-- Foto principal: cambiar por <img class="foto portada-foto" src="fotos/portada.jpg" alt="..."> -->
+  <div class="foto vacia portada-foto" role="img" aria-label="Espacio para la foto principal"><span>Foto principal</span></div>
+  <div class="portada-texto">
+    <h1>Cabañas familiares</h1>
+    <p>Un lugar tranquilo para descansar en familia.</p>
+  </div>
+</header>
+
+<main>
+  <section class="contenedor">
+    <h2>La cabaña</h2>
+    <p class="texto-largo">Espacio para describir la cabaña: cómo es, qué la hace especial y qué se puede hacer en los alrededores.</p>
+    <ul class="destacados">
+      <li><strong>Hasta 6 personas</strong><span>Pensada para familias y grupos.</span></li>
+      <li><strong>Reserva en línea</strong><span>Ves los días disponibles y eliges tus fechas.</span></li>
+      <li><strong>Pago por transferencia</strong><span>Sin tarjetas: te enviamos los datos por correo.</span></li>
+    </ul>
+  </section>
+
+  <section class="contenedor">
+    <h2>Galería</h2>
+    <div class="galeria">
+      <div class="foto vacia" role="img" aria-label="Espacio para foto del exterior"><span>Exterior</span></div>
+      <div class="foto vacia" role="img" aria-label="Espacio para foto del living"><span>Living</span></div>
+      <div class="foto vacia" role="img" aria-label="Espacio para foto de la cocina"><span>Cocina</span></div>
+      <div class="foto vacia" role="img" aria-label="Espacio para foto del dormitorio"><span>Dormitorio</span></div>
+      <div class="foto vacia" role="img" aria-label="Espacio para foto del baño"><span>Baño</span></div>
+      <div class="foto vacia" role="img" aria-label="Espacio para foto del entorno"><span>Entorno</span></div>
+    </div>
+  </section>
+
+  <section class="contenedor">
+    <h2>Cómo reservar</h2>
+    <ol class="pasos">
+      <li><strong>Elige tus fechas</strong><span>Completa tus datos y marca la llegada y la salida en el calendario. Las fechas quedan apartadas para ti.</span></li>
+      <li><strong>Te respondemos por correo</strong><span>Revisamos tu solicitud y te enviamos la confirmación con los datos para transferir.</span></li>
+      <li><strong>Paga dentro de 48 horas</strong><span>Al recibir tu transferencia, tu reserva queda confirmada.</span></li>
+    </ol>
+  </section>
+
+  <section class="contenedor">
+    <h2>Ubicación</h2>
+    <!-- Espacio para un mapa o una foto del lugar -->
+    <div class="foto vacia ancha" role="img" aria-label="Espacio para mapa o foto de la ubicación"><span>Mapa o foto de la ubicación</span></div>
+  </section>
+
+  <section class="llamado">
+    <h2>¿Listo para venir?</h2>
+    <p>Revisa los días disponibles y envía tu solicitud en un par de minutos.</p>
+    <a class="boton" href="reserva.php">Reserva aquí</a>
+  </section>
+</main>
+
+<footer class="pie">
+  <p>Cabañas familiares</p>
+</footer>
+
+</body>
+</html>
