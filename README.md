@@ -1,32 +1,23 @@
-# Proyecto
+# Cabañas
 
-Plantilla de proyecto con el modo **Ponytail** ya configurado: el agente de IA escribe solo el código que la tarea necesita, reutiliza lo que ya existe y deja un test pequeño en la lógica importante.
+Web simple para pedir reservas de cabañas familiares.
 
-## Cómo usarlo
+- El cliente elige cabaña, fechas y cantidad de personas, y deja sus datos de contacto.
+- Un administrador acepta o rechaza la solicitud desde un panel privado.
+- El cliente recibe la respuesta por correo. Si la reserva fue aceptada, el correo trae los datos para pagar por transferencia bancaria.
 
-1. Copia esta carpeta (o renómbrala con el nombre de tu proyecto).
-2. Ábrela en tu editor:
-   - **Antigravity**: lee `AGENTS.md` como reglas del workspace y las skills desde `.agents/skills/`.
-   - **Claude Code**: lee `CLAUDE.md` (que importa `AGENTS.md`) y las skills desde `.claude/skills/`.
-   - **Cursor, Codex, Copilot, etc.**: leen `AGENTS.md` en la raíz.
-3. Pon tu código en `src/` y pide tareas al agente como siempre.
+No incluye pagos en línea ni precios por temporada.
 
-## Comandos / skills incluidas
+## Tecnología
 
-| Skill | Para qué sirve |
-|---|---|
-| `/ponytail [lite\|full\|ultra\|off]` | Activa o cambia el nivel del modo |
-| `/ponytail-review` | Revisa los cambios (diff) y el código que tocan |
-| `/ponytail-audit` | Busca y ordena problemas en todo el repo |
-| `/ponytail-debt` | Junta los comentarios `shortcut:` en una lista de deuda técnica |
-| `/ponytail-gain` | Muestra cuánto código se ahorró |
-| `/ponytail-help` | Ayuda rápida |
+- [Next.js](https://nextjs.org) con TypeScript y Tailwind, publicado en Vercel
+- [Supabase](https://supabase.com) para la base de datos y el login del admin
+- [Resend](https://resend.com) para los correos
 
-## Qué NO incluye (a propósito)
+## Estado
 
-No se copiaron los *hooks* ni scripts de Ponytail (código que se ejecuta solo). Por eso el nivel elegido no se guarda entre sesiones y no hay barra de métricas. Si los quieres, instala el plugin oficial:
+En desarrollo. El plan completo y el avance están en [PLAN.md](PLAN.md).
 
-- Antigravity CLI: `agy plugin install https://github.com/DietrichGebert/ponytail`
-- Más opciones: https://github.com/dietrichgebert/ponytail/blob/main/INSTALL.md
+---
 
-Ponytail es de Dietrich Gebert, licencia MIT (ver `LICENSE-ponytail`).
+Las reglas del asistente de código vienen de la plantilla [Ponytail](https://github.com/dietrichgebert/ponytail) (MIT, ver `LICENSE-ponytail`).
