@@ -21,14 +21,19 @@ Un servicio para enviar correos desde código. Cuando pasa algo (una reserva nue
 
 ## Requisitos funcionales
 
-1. Formulario público con cabaña, fecha de entrada, fecha de salida, personas, nombre, email y teléfono.
-2. Validación de disponibilidad: no se aceptan fechas que choquen con una reserva `aceptada` o `pagada`.
+1. Formulario público con: cabaña, personas, nombre, ciudad, teléfono 1, teléfono 2 (opcional), correo 1 y correo 2 (opcional), más un calendario de la cabaña elegida donde se ven los días disponibles y se marcan la entrada y la salida.
+2. **La primera solicitud en llegar aparta las fechas** (opción B, decidida). Al enviarla, las fechas quedan bloqueadas y nadie más puede pedirlas. No se aceptan fechas que choquen con una reserva `pendiente`, `aceptada` o `pagada`, ni con días cerrados por el admin.
 3. Login de admin.
 4. Panel con la lista de reservas, filtrable por estado.
 5. Botones Aceptar, Rechazar, Pagada y Cancelar.
-6. Correo al cliente con la decisión. Si fue aceptada, incluye los datos de transferencia, el monto y el plazo de pago (48 h).
-7. Correo al admin cuando entra una solicitud nueva.
-8. Marcar como pagada y avisar al cliente con un correo de confirmación final.
+6. **Cierre de días para mantenimiento:** el admin cierra un rango de días de una cabaña (con un motivo opcional) y puede volver a abrirlo. No se puede cerrar un rango que ya tenga reservas `pendiente`, `aceptada` o `pagada`.
+7. Correos, todos con Resend. Los del cliente van al correo 1 y, si lo dejó, también al correo 2:
+   - **Al admin:** cuando entra una solicitud nueva.
+   - **Al cliente, solicitud recibida:** confirma que la solicitud llegó y que las fechas quedaron apartadas mientras se revisa.
+   - **Al cliente, aceptada:** datos de transferencia, monto y plazo de pago (48 h).
+   - **Al cliente, rechazada.**
+   - **Al cliente, pagada:** confirmación final de la reserva.
+   - **Al cliente, cancelada:** avisa que la reserva se anuló y que las fechas se liberaron.
 
 No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir agregar cabañas o admins sin cambiar código, y mantener el panel protegido sin exponer datos personales.
 
@@ -43,26 +48,33 @@ No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir
 
 **cabanas**: `id int auto_increment pk`, `nombre varchar`, `capacidad int`, `precio_noche int` (CLP), `activa boolean`.
 
-**reservas**: `id int auto_increment pk`, `cabana_id int fk`, `nombre`, `email` y `telefono varchar`, `fecha_entrada date`, `fecha_salida date` (no cuenta como noche), `personas int`, `monto int` (noches × precio_noche, en CLP), `estado enum('pendiente','aceptada','rechazada','pagada','cancelada')`, `creada_en timestamp`.
+**reservas**: `id int auto_increment pk`, `cabana_id int fk`, `nombre`, `ciudad`, `telefono` y `email varchar`, `telefono2` y `email2 varchar null` (opcionales), `fecha_entrada date`, `fecha_salida date` (no cuenta como noche), `personas int`, `monto int` (noches × precio_noche, en CLP), `estado enum('pendiente','aceptada','rechazada','pagada','cancelada')`, `creada_en timestamp`.
+
+**bloqueos** (días cerrados por el admin): `id int auto_increment pk`, `cabana_id int fk`, `fecha_inicio date`, `fecha_fin date` (ambos días cerrados, inclusive), `motivo varchar null`, `creado_en timestamp`. Reabrir días = borrar el bloqueo.
 
 **admins**: `id int auto_increment pk`, `email varchar unique`, `password_hash varchar`. Las contraseñas se guardan con `password_hash()` de PHP, nunca en texto plano.
 
 ## Estados
 
 `pendiente` → `aceptada` → `pagada`
-`pendiente` → `rechazada`
-`aceptada` → `cancelada` (si no llega el pago en el plazo; libera las fechas)
+`pendiente` → `rechazada` (libera las fechas)
+`aceptada` → `cancelada` (si no llega el pago en 48 h; libera las fechas)
 
-Las reservas pendientes **no** bloquean fechas. Solo bloquean las que están en `aceptada` o `pagada`.
+Bloquean fechas: `pendiente`, `aceptada` y `pagada`. Las liberan: `rechazada` y `cancelada`. La cancelación por falta de pago la hace el admin a mano.
 
 ## Regla de choque de fechas
 
-Dos reservas de la misma cabaña chocan si `nueva_entrada < salida_existente AND nueva_salida > entrada_existente`. Quien sale el día 15 no choca con quien entra el 15.
+Una reserva ocupa las noches desde `fecha_entrada` hasta el día anterior a `fecha_salida`. Quien sale el día 15 no choca con quien entra el 15.
+
+- **Choca con otra reserva** de la misma cabaña si `nueva_entrada < salida_existente AND nueva_salida > entrada_existente`.
+- **Choca con un bloqueo** de la misma cabaña si `nueva_entrada <= fecha_fin AND nueva_salida > fecha_inicio`, porque el bloqueo incluye su último día.
 
 La regla se aplica en 2 lugares:
 
-1. **El formulario** avisa y muestra los días ocupados. Es solo informativo, porque una pendiente no bloquea.
-2. **El botón Aceptar** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `aceptada`/`pagada` y, si no hay, se actualiza a `aceptada`. El bloqueo evita que dos admins acepten reservas que chocan al mismo tiempo. Las tablas deben ser InnoDB.
+1. **El calendario del formulario** muestra los días ocupados y cerrados, y no deja elegirlos. Es solo ayuda visual; el navegador no es de confianza.
+2. **El PHP que guarda la solicitud** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `pendiente`/`aceptada`/`pagada` y con bloqueos y, si no hay, se inserta. Si dos personas envían la misma fecha al mismo tiempo, la segunda espera a que termine la primera y recibe "fechas no disponibles". Así nunca hay overbooking. Las tablas deben ser InnoDB.
+
+El cierre de días del admin usa la misma transacción: bloquea la cabaña y revisa que no haya reservas en ese rango antes de guardar.
 
 ## Decisiones de diseño
 
@@ -75,7 +87,9 @@ La regla se aplica en 2 lugares:
 7. **Panel protegido:** sesiones de PHP con `session_regenerate_id()` al hacer login, cookie `HttpOnly`, `Secure` y `SameSite=Lax`, y un token CSRF en cada botón del panel. Toda salida de datos pasa por `htmlspecialchars()`.
 8. **Resend sin dominio verificado** solo envía correos al email del dueño de la cuenta. Sirve para desarrollar; los clientes reciben correos solo cuando el dominio esté verificado.
 9. **Datos de transferencia** (banco, RUT, cuenta), email del admin, credenciales de MySQL y API key de Resend van en `config.php`.
-10. La disponibilidad pública devuelve solo rangos ocupados, nunca nombres ni correos.
+10. La disponibilidad pública devuelve solo rangos ocupados o cerrados, nunca nombres, correos ni el motivo del cierre.
+11. **Riesgo de la opción B:** como una solicitud aparta fechas sin pagar, alguien podría bloquear días con solicitudes falsas. Se mitiga con el captcha (Parte 5) y con el botón Rechazar, que las libera.
+12. **Calendario hecho a mano** en JS (una grilla por mes), sin librerías. El `<input type="date">` del navegador no permite marcar días deshabilitados.
 
 ## Plan por partes
 
@@ -84,19 +98,19 @@ Se avanza parte por parte. Cada una termina con algo que se puede probar, y el u
 | Parte | Qué hace Claude | Qué hace el usuario |
 |---|---|---|
 | **1. Base** | Estructura de carpetas, `.gitignore`, `sql/schema.sql`, `config.example.php`, conexión PDO | Encender MySQL (`brew services start mysql`), crear la base y ejecutar el SQL |
-| **2. Formulario** | Página pública, PHP que valida y guarda, aviso de fechas ocupadas | Probar reservas que chocan |
-| **3. Panel admin** | Login, script para crear admins, lista con filtro, botones Aceptar, Rechazar, Pagada y Cancelar | Crear su usuario admin con el script |
-| **4. Correos** | Los 4 correos con Resend (solicitud nueva, aceptada, rechazada, pagada) | Crear la cuenta en Resend y obtener la API key |
+| **2. Formulario** | PHP que valida y guarda (con el bloqueo de la cabaña), PHP de disponibilidad, formulario con calendario, CSS para celular | Cargar cabañas y probar reservas que chocan |
+| **3. Panel admin** | Login, script para crear admins, lista con filtro, botones Aceptar, Rechazar, Pagada y Cancelar, cierre y reapertura de días | Crear su usuario admin con el script |
+| **4. Correos** | Los 6 correos con Resend (nueva al admin; recibida, aceptada, rechazada, pagada y cancelada al cliente) | Crear la cuenta en Resend y obtener la API key |
 | **5. Publicación** | Captcha (Cloudflare Turnstile), guía de subida al hosting | Elegir hosting, dominio y DNS |
 
 En desarrollo se usa el servidor que trae PHP: `php -S localhost:8000 -t public`.
 
-Queda fuera, a propósito: calendario visual, precios por temporada, cancelación automática, WhatsApp y pago en línea.
+Queda fuera, a propósito: precios por temporada, cancelación automática, WhatsApp y pago en línea.
 
 ## Estado actual
 
 - Repo git en `~/Desktop/entorno_prueba/cabanas-proyecto`, rama `main`, con remoto en GitHub: https://github.com/JorgeMendozaJaque/cabanas_proyecto
 - Reglas del agente en `AGENTS.md`: modo Ponytail, mínimo código necesario y respuestas en español.
 - Instalados con Homebrew: PHP 8.5 (con `pdo_mysql`, `curl` y `mbstring`) y MySQL. Composer no está y no hace falta.
-- La plantilla trae `src/` vacío y un `.gitignore` pensado para Python, que hay que ajustar.
-- **Siguiente paso: Parte 1.**
+- **Parte 1 lista y probada:** MySQL corre con `brew services` (usuario `root` sin clave, solo local). Base `cabanas` creada desde `sql/schema.sql`, `config.php` local creado, conexión PDO y restricciones de la base verificadas. Cargada "Cabaña 1" (6 personas, $80.000 por noche); la segunda se agrega con el `INSERT` comentado en `sql/schema.sql`.
+- **Siguiente paso: Parte 2.**
