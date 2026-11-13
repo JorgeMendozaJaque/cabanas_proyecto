@@ -188,3 +188,29 @@ button[type="submit"]:disabled { opacity: .6; cursor: default; }
 .boton:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 .pie { padding: 24px 16px 32px; text-align: center; color: var(--suave); font-size: .9rem; }
+
+/* Navbar arriba a la derecha, sobre la foto principal */
+.navbar {
+  position: absolute; top: 12px; right: 16px; z-index: 1;
+  display: flex; gap: 4px;
+  padding: 4px; border-radius: 999px;
+  background: rgba(20, 35, 27, .7);
+}
+.navbar a {
+  padding: 8px 14px; border-radius: 999px;
+  color: #fff; font-weight: 600; font-size: .95rem; text-decoration: none;
+}
+.navbar a:hover { background: rgba(255, 255, 255, .15); }
+.navbar a:focus-visible { outline: 3px solid #fff; outline-offset: 1px; }
+
+/* Flecha para volver arriba, al final de la landing */
+.subir {
+  display: inline-grid; place-items: center;
+  width: 48px; height: 48px; margin-bottom: 8px;
+  border-radius: 50%; background: var(--verde); color: #fff;
+  font-size: 1.5rem; font-weight: 700; text-decoration: none;
+}
+.subir:hover { background: #24493a; }
+.subir:focus-visible { outline: 3px solid var(--verde); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
