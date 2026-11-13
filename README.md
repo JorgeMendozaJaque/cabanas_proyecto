@@ -10,8 +10,9 @@ No incluye pagos en línea ni precios por temporada.
 
 ## Tecnología
 
-- [Next.js](https://nextjs.org) con TypeScript y Tailwind, publicado en Vercel
-- [Supabase](https://supabase.com) para la base de datos y el login del admin
+- HTML, CSS y JavaScript
+- PHP en el servidor
+- MySQL para la base de datos
 - [Resend](https://resend.com) para los correos
 
 ## Estado
