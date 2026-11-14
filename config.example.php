@@ -18,4 +18,10 @@ return [
         'rut' => '11.111.111-1',
         'email' => 'pagos@ejemplo.cl',
     ],
+    // Correos con Resend. Sin dominio verificado: remitente onboarding@resend.dev y solo llega al dueño de la cuenta.
+    'resend' => [
+        'api_key' => 're_xxxxxxxx',
+        'remitente' => 'Cabañas <onboarding@resend.dev>',
+        'admin_email' => 'admin@ejemplo.cl',
+    ],
 ];

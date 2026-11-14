@@ -22,6 +22,24 @@ function abono(int $monto): int
     return intdiv($monto * config()['abono_porcentaje'] + 99, 100);
 }
 
+function pesos(int|string $n): string
+{
+    return '$' . number_format((int) $n, 0, ',', '.');
+}
+
+// "2026-11-14" → "14 de noviembre de 2026", sin pasar por zonas horarias.
+function fecha_larga(string $f): string
+{
+    $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return (int) substr($f, 8, 2) . ' de ' . $meses[(int) substr($f, 5, 2) - 1] . ' de ' . substr($f, 0, 4);
+}
+
+// Hasta cuándo puede transferir el abono: 48 h desde que envió la solicitud.
+function plazo_pago(string $creada_en): string
+{
+    return date('d-m-Y \a \l\a\s H:i', strtotime($creada_en . ' +48 hours'));
+}
+
 function hoy_chile(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone('America/Santiago')))->format('Y-m-d');

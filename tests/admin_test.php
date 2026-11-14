@@ -86,6 +86,10 @@ try {
     chequear(in_array($sale1, $ids), 'muestra a quien se va el día 1');
     chequear(!in_array($antes, $ids), 'no muestra reservas del mes anterior');
     chequear(!in_array($rech, $ids), 'no muestra rechazadas');
+    $cerrar($n + 10, $n + 12);
+    $cerrar($n + 40, $n + 41); // ya es el mes siguiente
+    $cerrados = array_filter(bloqueos_del_mes($mes), fn($b) => $b['cabana'] === 'Cabaña de prueba');
+    chequear(count($cerrados) === 1 && reset($cerrados)['motivo'] === 'test', 'muestra los días cerrados del mes con su motivo');
 
     echo "Ganancias por mes\n";
     $sig = (new DateTimeImmutable("$mes-01"))->modify('+1 month')->format('Y-m'); // mes siguiente al del calendario

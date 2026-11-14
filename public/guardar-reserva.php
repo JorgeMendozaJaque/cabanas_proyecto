@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/../src/reservas.php';
+require __DIR__ . '/../src/correos.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -15,6 +15,8 @@ try {
         session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS'])]);
         session_start();
         $_SESSION['reserva_id'] = $resultado['id'];
+        session_write_close();
+        correos_reserva_nueva($resultado['id']);
     } else {
         http_response_code(empty($resultado['ocupado']) ? 422 : 409);
     }

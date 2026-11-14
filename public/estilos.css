@@ -262,6 +262,11 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .reserva-monto { font-weight: 700; font-size: 1.1rem; color: var(--verde); }
 .reserva-contacto { margin: 0; padding: 0; list-style: none; font-size: .95rem; overflow-wrap: anywhere; }
 .reserva-contacto a { color: var(--texto); }
+.reserva-mas summary { padding: 4px 0; color: var(--verde); font-weight: 600; cursor: pointer; }
+.reserva-mas dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 4px 0 0; font-size: .95rem; }
+.reserva-mas dt { color: var(--suave); }
+.reserva-mas dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.reserva-mas a { color: var(--texto); }
 .reserva-plazo { padding: 6px 10px; border-radius: 8px; background: #fff6dc; color: #7a5300; font-size: .9rem; }
 .reserva-plazo.vencido { background: #fbe4e2; color: var(--error); font-weight: 600; }
 
@@ -351,6 +356,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 }
 .cal-admin-cliente.pendiente, .cal-admin-lista li.pendiente { border-left-style: dashed; }
 .cal-admin-limpieza { --c-fondo: repeating-linear-gradient(135deg, #ecebe8 0 6px, #f6f5f2 6px 12px); --c-borde: #5f5f5f; font-style: italic; }
+.cal-admin-cerrado { --c-fondo: repeating-linear-gradient(135deg, #fbe4e2 0 6px, #fdf1f0 6px 12px); --c-borde: #a3302a; }
 .calendario-admin h2 { margin: 16px 0 12px; color: var(--verde); font-size: 1.5rem; }
 .cal-admin-lista, .calendario-admin .vacio { margin: 0 0 28px; }
 .cal-admin-lista { display: grid; gap: 10px; padding: 0; list-style: none; }

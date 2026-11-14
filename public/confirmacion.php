@@ -17,12 +17,11 @@ if (!$r) {
 
 $t = config()['transferencia'];
 $pct = config()['abono_porcentaje'];
-$plazo = date('d-m-Y \a \l\a\s H:i', strtotime($r['creada_en'] . ' +48 hours'));
+$plazo = plazo_pago($r['creada_en']);
 $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
 $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$pesos = fn($n) => '$' . number_format((int) $n, 0, ',', '.');
-$meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-$fecha = fn($f) => (int) substr($f, 8, 2) . ' de ' . $meses[(int) substr($f, 5, 2) - 1] . ' de ' . substr($f, 0, 4);
+$pesos = pesos(...);
+$fecha = fecha_larga(...);
 ?>
 <!doctype html>
 <html lang="es">

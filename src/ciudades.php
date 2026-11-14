@@ -44,6 +44,13 @@ const PAISES = [
     'Zambia', 'Zimbabue',
 ];
 
+// Región de una ciudad de la lista, "Extranjero" si es un país, o '' si no está en ninguna lista.
+function region_de(string $ciudad): string
+{
+    foreach (CIUDADES as $region => $ciudades) if (in_array($ciudad, $ciudades, true)) return $region;
+    return in_array($ciudad, PAISES, true) ? 'Extranjero' : '';
+}
+
 function ciudad_valida(string $ciudad): bool
 {
     return in_array($ciudad, array_merge(PAISES, ...array_values(CIUDADES)), true);

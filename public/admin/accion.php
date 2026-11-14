@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../../src/admin.php';
+require __DIR__ . '/../../src/correos.php';
 exigir_admin();
 exigir_post_csrf();
 
@@ -12,6 +13,7 @@ $mensajes = [
 ];
 
 if ($id && isset($mensajes[$accion]) && cambiar_estado($id, $accion)) {
+    correo_decision($id);
     avisar(sprintf($mensajes[$accion], $id));
 } else {
     avisar('No se pudo hacer el cambio: la reserva ya no está en ese estado. Revisa la lista actualizada.', 'error');

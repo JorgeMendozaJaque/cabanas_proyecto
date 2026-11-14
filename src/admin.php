@@ -208,6 +208,16 @@ function borrar_bloqueo(int $id): bool
     return $st->rowCount() === 1;
 }
 
+// Días cerrados que tocan el mes 'YYYY-MM', con su motivo (solo para el panel).
+function bloqueos_del_mes(string $mes): array
+{
+    $inicio = "$mes-01";
+    $st = db()->prepare('SELECT b.*, c.nombre AS cabana FROM bloqueos b JOIN cabanas c ON c.id = b.cabana_id
+                         WHERE b.fecha_inicio <= ? AND b.fecha_fin >= ? ORDER BY b.fecha_inicio');
+    $st->execute([date('Y-m-t', strtotime($inicio)), $inicio]);
+    return $st->fetchAll();
+}
+
 function listar_bloqueos(): array
 {
     $st = db()->prepare('SELECT b.*, c.nombre AS cabana FROM bloqueos b JOIN cabanas c ON c.id = b.cabana_id

@@ -6,6 +6,7 @@ $vista = in_array($_GET['vista'] ?? '', ['dias', 'calendario', 'ganancias'], tru
 $ano = filter_var($_GET['ano'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 2100]]) ?: (int) substr(hoy_chile(), 0, 4);
 $mes = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $_GET['mes'] ?? '') ? $_GET['mes'] : substr(hoy_chile(), 0, 7);
 $delMes = $vista === 'calendario' ? reservas_del_mes($mes) : [];
+$cerradosMes = $vista === 'calendario' ? bloqueos_del_mes($mes) : [];
 $estado = in_array($_GET['estado'] ?? '', ESTADOS, true) ? $_GET['estado'] : null;
 $conteo = contar_por_estado();
 $bloqueos = listar_bloqueos();
@@ -16,7 +17,7 @@ $csrf = token_csrf();
 $ahora = ahora_chile();
 
 $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$pesos = fn($n) => '$' . number_format((int) $n, 0, ',', '.');
+$pesos = pesos(...);
 $fecha = fn($f) => date('d-m-Y', strtotime($f));
 $fechaHora = fn($f) => date('d-m-Y H:i', strtotime($f));
 $MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -87,7 +88,7 @@ $botones = fn(array $r) => [
             <span class="estado estado-<?= $e($r['estado']) ?>"><?= $e($r['estado']) ?></span>
             <span class="reserva-id">#<?= (int) $r['id'] ?></span>
           </div>
-          <h2><?= $e($r['nombre']) ?> <small><?= $e($r['ciudad']) ?></small></h2>
+          <h2><?= $e($r['nombre']) ?></h2>
           <p class="reserva-fechas">
             <strong><?= $fecha($r['fecha_entrada']) ?> → <?= $fecha($r['fecha_salida']) ?></strong>
             · <?= $noches ?> <?= $noches === 1 ? 'noche' : 'noches' ?> · <?= (int) $r['personas'] ?> pers. · <?= $e($r['cabana']) ?>
@@ -102,10 +103,19 @@ $botones = fn(array $r) => [
             <?php endif ?>
           </dl>
           <ul class="reserva-contacto">
-            <li><a href="tel:<?= $e($r['telefono']) ?>"><?= $e($r['telefono']) ?></a><?php if ($r['telefono2']): ?> · <a href="tel:<?= $e($r['telefono2']) ?>"><?= $e($r['telefono2']) ?></a><?php endif ?></li>
-            <li><a href="mailto:<?= $e($r['email']) ?>"><?= $e($r['email']) ?></a><?php if ($r['email2']): ?> · <a href="mailto:<?= $e($r['email2']) ?>"><?= $e($r['email2']) ?></a><?php endif ?></li>
+            <li><a href="tel:<?= $e($r['telefono']) ?>"><?= $e($r['telefono']) ?></a></li>
+            <li><a href="mailto:<?= $e($r['email']) ?>"><?= $e($r['email']) ?></a></li>
           </ul>
-          <p class="reserva-meta">Solicitada el <?= $fechaHora($r['creada_en']) ?></p>
+          <details class="reserva-mas">
+            <summary>Ver más</summary>
+            <dl>
+              <dt>Ciudad</dt><dd><?= $e($r['ciudad']) ?></dd>
+              <?php if ($region = region_de($r['ciudad'])): ?><dt><?= $region === 'Extranjero' ? 'Origen' : 'Región' ?></dt><dd><?= $e($region) ?></dd><?php endif ?>
+              <dt>Teléfono 2</dt><dd><?= $r['telefono2'] ? '<a href="tel:' . $e($r['telefono2']) . '">' . $e($r['telefono2']) . '</a>' : '—' ?></dd>
+              <dt>Correo 2</dt><dd><?= $r['email2'] ? '<a href="mailto:' . $e($r['email2']) . '">' . $e($r['email2']) . '</a>' : '—' ?></dd>
+              <dt>Solicitada</dt><dd><?= $fechaHora($r['creada_en']) ?></dd>
+            </dl>
+          </details>
           <?php if ($r['estado'] === 'pendiente'): ?>
             <p class="reserva-plazo <?= $vence < $ahora ? 'vencido' : '' ?>">
               <?= $vence < $ahora ? 'Plazo del abono vencido el' : 'Plazo del abono hasta el' ?> <?= $fechaHora($vence) ?>
@@ -174,7 +184,7 @@ $botones = fn(array $r) => [
             <?php endforeach ?>
           </ul>
         <?php endif ?>
-        <p><a href="?vista=calendario&mes=<?= sprintf('%d-%02d', $ano, $elegido) ?>">Ver <?= $nombre ?> en el calendario →</a></p>
+        <p><a href="?vista=calendario&desde=ganancias&mes=<?= sprintf('%d-%02d', $ano, $elegido) ?>">Ver <?= $nombre ?> en el calendario →</a></p>
       </div>
     <?php endif ?>
   </section>
@@ -186,12 +196,16 @@ $botones = fn(array $r) => [
     $color = fn(array $r) => 'cliente-' . ($r['id'] % 8); // por id, así el cliente mantiene su color al cambiar de mes
     $hoy = hoy_chile();
     $vienen = array_filter($delMes, fn($r) => $r['fecha_salida'] >= "$mes-01"); // sin quien solo aparece por la limpieza del día 1
+    $desde = ($_GET['desde'] ?? '') === 'ganancias' ? '&desde=ganancias' : ''; // se mantiene al cambiar de mes
   ?>
   <section class="calendario-admin">
+    <?php if ($desde): ?>
+      <p><a class="cal-admin-nav" href="?vista=ganancias&ano=<?= $primero->format('Y') ?>&m=<?= $primero->format('n') ?>#resumen">◀ Volver a Ganancias</a></p>
+    <?php endif ?>
     <div class="cal-admin-cabecera">
-      <a class="cal-admin-nav" href="?vista=calendario&mes=<?= $primero->modify('-1 month')->format('Y-m') ?>" aria-label="Mes anterior">◀ Anterior</a>
+      <a class="cal-admin-nav" href="?vista=calendario<?= $desde ?>&mes=<?= $primero->modify('-1 month')->format('Y-m') ?>" aria-label="Mes anterior">◀ Anterior</a>
       <h1><?= ucfirst($nombreMes) ?> <?= $primero->format('Y') ?></h1>
-      <a class="cal-admin-nav" href="?vista=calendario&mes=<?= $primero->modify('+1 month')->format('Y-m') ?>" aria-label="Mes siguiente">Siguiente ▶</a>
+      <a class="cal-admin-nav" href="?vista=calendario<?= $desde ?>&mes=<?= $primero->modify('+1 month')->format('Y-m') ?>" aria-label="Mes siguiente">Siguiente ▶</a>
     </div>
     <?php if ($mes !== substr($hoy, 0, 7)): ?><p class="cal-admin-hoy"><a href="?vista=calendario">Volver al mes de hoy</a></p><?php endif ?>
 
@@ -212,6 +226,19 @@ $botones = fn(array $r) => [
       </ul>
     <?php endif ?>
 
+    <?php if ($cerradosMes): ?>
+      <h2>Días cerrados en <?= $nombreMes ?></h2>
+      <ul class="cal-admin-lista">
+        <?php foreach ($cerradosMes as $b): ?>
+          <li class="cal-admin-cerrado">
+            <strong><?= $e($b['motivo'] ?: 'Cerrado') ?></strong>
+            <span>Del <?= $diaSemana($b['fecha_inicio']) ?> <?= $fecha($b['fecha_inicio']) ?> al <?= $diaSemana($b['fecha_fin']) ?> <?= $fecha($b['fecha_fin']) ?></span>
+            <span><?= $e($b['cabana']) ?></span>
+          </li>
+        <?php endforeach ?>
+      </ul>
+    <?php endif ?>
+
     <table class="cal-admin">
       <thead><tr><?php foreach (['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as $s): ?><th scope="col"><?= $s ?></th><?php endforeach ?></tr></thead>
       <tbody><tr>
@@ -222,6 +249,11 @@ $botones = fn(array $r) => [
         ?>
           <td class="<?= $f === $hoy ? 'hoy' : '' ?>">
             <span class="cal-admin-dia"><?= $dia ?></span>
+            <?php foreach ($cerradosMes as $b): if ($f < $b['fecha_inicio'] || $f > $b['fecha_fin']) continue; ?>
+              <span class="cal-admin-cliente cal-admin-cerrado" title="<?= $e('Cerrado · ' . $b['cabana'] . ($b['motivo'] ? ' · ' . $b['motivo'] : '')) ?>">
+                <b>Cerrado</b> <?= $e($b['motivo'] ?? '') ?>
+              </span>
+            <?php endforeach ?>
             <?php foreach ($delMes as $r):
               if ($f === date('Y-m-d', strtotime($r['fecha_salida'] . ' +1 day'))) echo '<span class="cal-admin-cliente cal-admin-limpieza">Limpieza</span>';
               if ($f < $r['fecha_entrada'] || $f > $r['fecha_salida']) continue;
