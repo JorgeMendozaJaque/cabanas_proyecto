@@ -12,7 +12,7 @@ Una web donde los clientes piden reservas de cabañas familiares y un admin las 
 - **PHP** en el servidor: recibe el formulario, valida, guarda y maneja el panel admin.
 - **MySQL** para los datos, con acceso desde PHP vía PDO.
 - **Resend** para los correos. PHP llama a su API HTTP con `curl`, sin instalar SDK ni Composer.
-- **Por ahora todo corre en local** (PHP y MySQL en el Mac). La base de datos todavía no está lista y el usuario avisa cuando lo esté.
+- **Por ahora todo corre en local.** Se trabaja en dos equipos: un Mac (PHP y MySQL con Homebrew) y un PC Windows (PHP y MariaDB con winget). Ver "Estado actual".
 - Hosting: **por definir**, se elige en la Parte 5. Debe tener PHP 8 y MySQL 8, y permitir conexiones HTTPS salientes, que Resend necesita (varios hostings gratuitos las bloquean). Gasto fijo: dominio `.cl` y, probablemente, el hosting.
 
 ### Qué es Resend
@@ -21,7 +21,7 @@ Un servicio para enviar correos desde código. Cuando pasa algo (una reserva nue
 
 ## Requisitos funcionales
 
-1. Formulario público con: cabaña, personas, nombre, ciudad, teléfono 1, teléfono 2 (opcional), correo 1 y correo 2 (opcional), más un calendario de la cabaña elegida donde se ven los días disponibles y se marcan la entrada y la salida.
+1. Formulario público con: cabaña, personas (parte en blanco, obligatorio), nombre, ciudad (desplegable de regiones y ciudades de Chile; con el botón "Soy extranjero" cambia a países del mundo), teléfono 1, teléfono 2 (opcional), correo 1 y correo 2 (opcional), más un calendario de la cabaña elegida donde se ven los días disponibles y se marcan la entrada y la salida.
 2. **La primera solicitud en llegar aparta las fechas** (opción B, decidida). Al enviarla, las fechas quedan bloqueadas y nadie más puede pedirlas. No se aceptan fechas que choquen con una reserva `pendiente`, `aceptada` o `pagada`, ni con días cerrados por el admin.
 3. Login de admin.
 4. Panel con la lista de reservas, filtrable por estado.
@@ -34,6 +34,8 @@ Un servicio para enviar correos desde código. Cuando pasa algo (una reserva nue
    - **Al cliente, solicitud recibida:** datos de transferencia, abono, saldo y plazo de 48 h (lo mismo que la página de confirmación).
    - **Al cliente, aceptada:** reserva confirmada, cuánto pagó y el saldo a pagar al llegar.
    - **Al cliente, rechazada:** las fechas se liberaron.
+8. **Pestaña Calendario** del panel: vista por mes con un color por cliente, "Llega" / "Se va" en cada día, el día de limpieza marcado y la lista "Quién viene" arriba. Letra grande: el admin es una persona mayor.
+9. **Pestaña Ganancias** del panel: el año como 12 casillas con el total de cada mes y el total anual. Al tocar un mes se ve el detalle por reserva (cuánto aportó y saldo por cobrar). Solo cuentan las reservas aceptadas, y cada noche suma al mes en que se duerme.
 
 No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir agregar cabañas o admins sin cambiar código, y mantener el panel protegido sin exponer datos personales.
 
@@ -63,15 +65,15 @@ Bloquean fechas: `pendiente` y `aceptada`. Las libera: `rechazada`. El rechazo p
 
 ## Regla de choque de fechas
 
-Una reserva ocupa las noches desde `fecha_entrada` hasta el día anterior a `fecha_salida`. Quien sale el día 15 no choca con quien entra el 15.
+Una reserva ocupa las noches desde `fecha_entrada` hasta el día anterior a `fecha_salida`. **Después de cada salida hay un día completo de limpieza y mantención:** entre una reserva y otra quedan 2 noches libres (`NOCHES_LIMPIEZA = 2` en `src/reservas.php`). Si alguien se va el 26, el siguiente llega el 28; y quien reserve antes debe irse a más tardar 2 días antes de la llegada del otro.
 
-- **Choca con otra reserva** de la misma cabaña si `nueva_entrada < salida_existente AND nueva_salida > entrada_existente`.
+- **Choca con otra reserva** de la misma cabaña si `nueva_entrada < salida_existente + 2 AND nueva_salida + 2 > entrada_existente`.
 - **Choca con un bloqueo** de la misma cabaña si `nueva_entrada <= fecha_fin AND nueva_salida > fecha_inicio`, porque el bloqueo incluye su último día.
 
 La regla se aplica en 2 lugares:
 
-1. **El calendario del formulario** muestra los días ocupados y cerrados, y no deja elegirlos. Es solo ayuda visual; el navegador no es de confianza.
-2. **El PHP que guarda la solicitud** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `pendiente`/`aceptada`/`pagada` y con bloqueos y, si no hay, se inserta. Si dos personas envían la misma fecha al mismo tiempo, la segunda espera a que termine la primera y recibe "fechas no disponibles". Así nunca hay overbooking. Las tablas deben ser InnoDB. Entre una reserva y otra quedan 2 noches libres para limpieza y mantención (`NOCHES_LIMPIEZA` en `src/reservas.php`): si alguien se va el 26, el siguiente llega el 28.
+1. **El calendario del formulario** muestra los días ocupados (con la limpieza incluida) y cerrados, y no deja elegirlos. Es solo ayuda visual; el navegador no es de confianza.
+2. **El PHP que guarda la solicitud** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `pendiente`/`aceptada`/`pagada` y con bloqueos y, si no hay, se inserta. Si dos personas envían la misma fecha al mismo tiempo, la segunda espera a que termine la primera y recibe "fechas no disponibles". Así nunca hay overbooking. Las tablas deben ser InnoDB.
 
 El cierre de días del admin usa la misma transacción: bloquea la cabaña y revisa que no haya reservas en ese rango antes de guardar.
 
@@ -88,7 +90,7 @@ El cierre de días del admin usa la misma transacción: bloquea la cabaña y rev
 9. **Datos de transferencia** (banco, RUT, cuenta), email del admin, credenciales de MySQL y API key de Resend van en `config.php`.
 10. La disponibilidad pública devuelve solo rangos ocupados o cerrados, nunca nombres, correos ni el motivo del cierre.
 11. **Riesgo de la opción B:** como una solicitud aparta fechas sin pagar, alguien podría bloquear días con solicitudes falsas. Se mitiga con el captcha (Parte 5) y con el botón Rechazar, que las libera.
-13. **Tipo de texto por campo** (se filtra al escribir, lo valida el HTML y lo vuelve a validar el servidor): nombre y ciudad solo letras (con tildes y ñ), espacios, apóstrofo, punto y guion, de 2 a 100 caracteres; teléfonos solo números, de 8 a 15 dígitos, con `+` opcional al inicio y sin espacios; correos sin espacios, máximo 254; personas solo enteros.
+13. **Tipo de texto por campo** (se filtra al escribir, lo valida el HTML y lo vuelve a validar el servidor): nombre solo letras (con tildes y ñ), espacios, apóstrofo, punto y guion, de 2 a 100 caracteres; ciudad debe ser una de la lista `CIUDADES` o un país de `PAISES` (`src/ciudades.php`; el país se guarda en la misma columna `ciudad`); teléfonos solo números, de 8 a 15 dígitos, con `+` opcional al inicio y sin espacios; correos sin espacios, máximo 254; personas solo enteros.
 12. **Calendario hecho a mano** en JS (una grilla por mes), sin librerías. El `<input type="date">` del navegador no permite marcar días deshabilitados.
 
 ## Plan por partes
@@ -109,9 +111,10 @@ Queda fuera, a propósito: precios por temporada, cancelación automática, What
 
 ## Estado actual
 
-- Repo git en `~/Desktop/entorno_prueba/cabanas-proyecto`, rama `main`, con remoto en GitHub: https://github.com/JorgeMendozaJaque/cabanas_proyecto
+- Repo git, rama `main`, con remoto en GitHub: https://github.com/JorgeMendozaJaque/cabanas_proyecto. Copias en el Mac (`~/Desktop/entorno_prueba/cabanas-proyecto`) y en el PC Windows (`C:\Users\hahaha\cabanas_proyecto`). Antes de trabajar en un equipo, `git pull`; al terminar, commit y `git push`.
 - Reglas del agente en `AGENTS.md`: modo Ponytail, mínimo código necesario y respuestas en español.
-- Instalados con Homebrew: PHP 8.5 (con `pdo_mysql`, `curl` y `mbstring`) y MySQL. Composer no está y no hace falta.
+- **Mac:** instalados con Homebrew PHP 8.5 (con `pdo_mysql`, `curl` y `mbstring`) y MySQL. Composer no está y no hace falta.
+- **PC Windows:** PHP 8.4 y MariaDB 13 instalados con winget; `php.ini` creado con `pdo_mysql` y `mbstring`. MariaDB no quedó como servicio (falta una terminal de administrador), así que tras reiniciar el PC hay que levantarlo: `& "C:\Program Files\MariaDB 13.0\bin\mariadbd.exe" --defaults-file="C:\Program Files\MariaDB 13.0\data\my.ini"`. Base `cabanas` creada desde `sql/schema.sql` y `config.php` copiado del ejemplo (`root` sin clave). En Windows `crear_admin.php` muestra la contraseña al escribirla (no existe `stty`).
 - **Parte 1 lista y probada:** MySQL corre con `brew services` (usuario `root` sin clave, solo local). Base `cabanas` creada desde `sql/schema.sql`, `config.php` local creado, conexión PDO y restricciones de la base verificadas. Cargada "Cabaña 1" (6 personas, $80.000 por noche); la segunda se agrega con el `INSERT` comentado en `sql/schema.sql`.
 - **Parte 2 lista y probada, esperando revisión del usuario:** `src/reservas.php` (validación, transacción con bloqueo de la cabaña, disponibilidad), `public/guardar-reserva.php`, `public/disponibilidad.php`, `public/reserva.php` (formulario: primero los datos, después cabaña y fechas; lado a lado desde 900 px de ancho), `public/app.js` y `public/estilos.css`.
 - **Landing** en `public/index.html`: HTML estático con espacios vacíos para fotos reales (instrucciones en un comentario al inicio del archivo; las fotos van en `public/fotos/`) y el botón "Reserva aquí" al final, que lleva a `reserva.php`. Prueba: `php tests/reservas_test.php`. Límites agregados: máximo 30 noches por reserva y hasta 365 días hacia adelante.
@@ -119,4 +122,6 @@ Queda fuera, a propósito: precios por temporada, cancelación automática, What
 - El usuario debe crear su admin: `php crear_admin.php su@correo.cl`.
 - **Página de confirmación** (`public/confirmacion.php`): al reservar, el cliente pasa a una página con el resumen, los datos de transferencia (desde `config.php`, por ahora genéricos) y "Volver al inicio". Solo la ve quien hizo la reserva (se guarda en su sesión, no va el id en la URL). Indica transferir al recibir la confirmación por correo.
 - **Abono del 50%** implementado: columnas `reservas.abono` y `reservas.pagado`, `abono_porcentaje` en `config.php`, confirmación con abono/saldo/política, panel con Aceptar · abono / Aceptar · pago total / Rechazar. Las pruebas usan una cabaña temporal propia para no chocar con datos reales.
-- **Siguiente paso: Parte 4 (correos con Resend).**
+- **Mejoras del panel y del formulario (13-11-2026):** pestañas Calendario y Ganancias (`reservas_del_mes()` y `ganancias_del_ano()` en `src/admin.php`), día de limpieza entre reservas, personas en blanco, ciudad por lista con "Soy extranjero" (`src/ciudades.php`). Todo con pruebas en `tests/`.
+- Los IDs de reservas tienen huecos porque las pruebas crean y borran filas en la misma base. Es normal; si molesta, se puede usar una base aparte para pruebas.
+- **Siguiente paso: Parte 4 (correos con Resend).** El usuario debe crear la cuenta en Resend y pasar la API key.
