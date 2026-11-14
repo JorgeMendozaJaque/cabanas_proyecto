@@ -166,9 +166,9 @@ function contar_por_estado(): array
 function crear_bloqueo(array $datos): ?string
 {
     $cabana_id = filter_var($datos['cabana_id'] ?? null, FILTER_VALIDATE_INT);
-    $inicio = trim((string) ($datos['fecha_inicio'] ?? ''));
-    $fin = trim((string) ($datos['fecha_fin'] ?? ''));
-    $motivo = trim((string) ($datos['motivo'] ?? '')) ?: null;
+    $inicio = campo_texto($datos, 'fecha_inicio');
+    $fin = campo_texto($datos, 'fecha_fin');
+    $motivo = campo_texto($datos, 'motivo') ?: null;
 
     if (!$cabana_id) return 'Elige una cabaña.';
     if (!fecha_valida($inicio) || !fecha_valida($fin)) return 'Elige las fechas.';

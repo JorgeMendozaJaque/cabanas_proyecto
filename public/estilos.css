@@ -133,6 +133,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .foto.vacia span { padding: 4px 10px; border-radius: 6px; background: rgba(255, 255, 255, .85); }
 .foto.vacia span::before { content: "📷 "; }
 .foto.ancha { aspect-ratio: 16 / 9; max-height: 380px; }
+.mapa { border: 0; }
 
 .portada { position: relative; }
 .portada-foto { aspect-ratio: auto; height: 62vh; min-height: 320px; max-height: 560px; border-radius: 0; border-width: 0 0 2px; }
@@ -143,6 +144,8 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
   color: #fff;
 }
 .portada-texto h1 { color: #fff; font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1.1; }
+.portada-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.portada-titulo h1 { margin: 0; }
 .portada-texto p { margin-top: 6px; margin-bottom: 0; font-size: 1.1rem; }
 .portada-texto > * { max-width: 1040px; margin-left: auto; margin-right: auto; }
 

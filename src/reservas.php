@@ -93,9 +93,15 @@ function validar_reserva(array $r): ?string
  * Valida y guarda una solicitud como 'pendiente'.
  * Devuelve ['ok' => true, 'id', 'noches', 'monto', 'abono'] o ['ok' => false, 'error', 'ocupado'?].
  */
+// Campo de texto de un formulario. Si llega como lista (nombre[]=x, vía Postman) vale '' y no "Array".
+function campo_texto(array $datos, string $k): string
+{
+    return is_scalar($datos[$k] ?? null) ? trim((string) $datos[$k]) : '';
+}
+
 function crear_reserva(array $datos): array
 {
-    $texto = fn(string $k) => trim((string) ($datos[$k] ?? ''));
+    $texto = fn(string $k) => campo_texto($datos, $k);
     $r = [
         'cabana_id' => filter_var($datos['cabana_id'] ?? null, FILTER_VALIDATE_INT),
         'personas' => filter_var($datos['personas'] ?? null, FILTER_VALIDATE_INT),

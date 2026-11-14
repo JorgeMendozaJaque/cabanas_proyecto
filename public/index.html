@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="estilos.css">
 </head>
 <!--
-  CÓMO AGREGAR LAS FOTOS REALES
-  1. Copia la foto en la carpeta public/fotos/ (por ejemplo: public/fotos/exterior.jpg).
-  2. Cambia el <div class="foto vacia" ...>...</div> correspondiente por:
-       <img class="foto" src="fotos/exterior.jpg" alt="Describe lo que se ve en la foto">
-  Usa fotos .jpg o .webp de máximo unos 300 KB para que la página cargue rápido en el celular.
+  CÓMO CAMBIAR LAS FOTOS
+  Copia la foto nueva encima de la antigua en public/fotos/, con el mismo nombre:
+  portada, living, cocina, dormitorio, bano, lago, rio (.jpg). No hay que tocar este archivo,
+  salvo el alt="..." de esa foto si ahora muestra otra cosa.
+  Usa fotos .jpg de máximo unos 300 KB para que la página cargue rápido en el celular.
 -->
 <body class="landing">
 
@@ -21,10 +21,12 @@
     <a href="#inicio">Inicio</a>
     <a href="admin/">Panel Admin</a>
   </nav>
-  <!-- Foto principal: cambiar por <img class="foto portada-foto" src="fotos/portada.jpg" alt="..."> -->
-  <div class="foto vacia portada-foto" role="img" aria-label="Espacio para la foto principal"><span>Foto principal</span></div>
+  <img class="foto portada-foto" src="fotos/portada.jpg" alt="Cabaña de madera roja con terraza techada, en medio de un prado rodeado de bosque">
   <div class="portada-texto">
-    <h1>Cabañas familiares</h1>
+    <div class="portada-titulo">
+      <h1>Cabañas familiares</h1>
+      <a class="boton" href="reserva.php">Reservar ahora</a>
+    </div>
     <p>Un lugar tranquilo para descansar en familia.</p>
   </div>
 </header>
@@ -43,12 +45,12 @@
   <section class="contenedor">
     <h2>Galería</h2>
     <div class="galeria">
-      <div class="foto vacia" role="img" aria-label="Espacio para foto del exterior"><span>Exterior</span></div>
-      <div class="foto vacia" role="img" aria-label="Espacio para foto del living"><span>Living</span></div>
-      <div class="foto vacia" role="img" aria-label="Espacio para foto de la cocina"><span>Cocina</span></div>
-      <div class="foto vacia" role="img" aria-label="Espacio para foto del dormitorio"><span>Dormitorio</span></div>
-      <div class="foto vacia" role="img" aria-label="Espacio para foto del baño"><span>Baño</span></div>
-      <div class="foto vacia" role="img" aria-label="Espacio para foto del entorno"><span>Entorno</span></div>
+      <img class="foto" src="fotos/living.jpg" alt="Living con piso de madera, sillones, estufa a leña y televisor" loading="lazy">
+      <img class="foto" src="fotos/cocina.jpg" alt="Cocina con lavaplatos, cocina a gas y ventana hacia el prado" loading="lazy">
+      <img class="foto" src="fotos/dormitorio.jpg" alt="Dormitorio con cama de dos plazas y ventana con cortinas verdes" loading="lazy">
+      <img class="foto" src="fotos/bano.jpg" alt="Baño con lavamanos, inodoro y tina con cortina" loading="lazy">
+      <img class="foto" src="fotos/lago.jpg" alt="Playa de piedrecillas a orillas del lago, rodeada de cerros con bosque" loading="lazy">
+      <img class="foto" src="fotos/rio.jpg" alt="Río de aguas verdes junto a una central hidroeléctrica, con cerros de fondo" loading="lazy">
     </div>
   </section>
 
@@ -63,8 +65,9 @@
 
   <section class="contenedor">
     <h2>Ubicación</h2>
-    <!-- Espacio para un mapa o una foto del lugar -->
-    <div class="foto vacia ancha" role="img" aria-label="Espacio para mapa o foto de la ubicación"><span>Mapa o foto de la ubicación</span></div>
+    <p>Tralcapulli, km 2 · Panguipulli, Región de Los Ríos. <a href="https://www.google.com/maps/search/?api=1&amp;query=Tralcapulli%2C+Panguipulli%2C+Los+R%C3%ADos%2C+Chile" target="_blank" rel="noopener">Abrir en Google Maps</a></p>
+    <!-- shortcut: el mapa busca "Tralcapulli", no el km 2 exacto; con el pin real, cambiar q= por las coordenadas (ej. q=-39.6,-72.1) -->
+    <iframe class="foto ancha mapa" title="Mapa de la ubicación de la cabaña" src="https://www.google.com/maps?q=Tralcapulli%2C+Panguipulli%2C+Los+R%C3%ADos%2C+Chile&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
   </section>
 
   <section class="llamado">
