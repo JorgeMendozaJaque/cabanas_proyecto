@@ -328,3 +328,94 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .reserva-montos dd:first-of-type { color: var(--verde); font-size: 1.1rem; font-weight: 700; }
 .reserva-montos .saldo { color: #7a5300; }
 .politica { margin: 12px 0 0; font-size: .9rem; color: var(--suave); }
+
+/* Calendario del panel: letra grande, la persona que lo usa es mayor */
+.calendario-admin { font-size: 1.15rem; }
+.cal-admin-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.cal-admin-cabecera h1 { margin: 0; font-size: 2rem; text-align: center; }
+.cal-admin-nav { padding: 10px 16px; border: 2px solid var(--verde); border-radius: var(--radio); background: #fff; color: var(--verde); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.cal-admin-nav:hover { background: var(--verde-claro); }
+.cal-admin-hoy { margin: 0 0 12px; text-align: center; }
+.cal-admin-hoy a { color: var(--verde); font-weight: 600; }
+.cal-admin { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; }
+.cal-admin th { padding: 8px 4px; color: var(--suave); font-size: 1.05rem; }
+.cal-admin td { height: 120px; padding: 4px; border: 1px solid var(--borde); vertical-align: top; }
+.cal-admin td.fuera { background: var(--fondo); }
+.cal-admin td.hoy { outline: 3px solid var(--verde); outline-offset: -3px; }
+.cal-admin-dia { display: block; margin-bottom: 4px; font-size: 1.3rem; font-weight: 700; }
+.cal-admin td.hoy .cal-admin-dia { color: var(--verde); }
+.cal-admin-cliente {
+  display: block; margin-top: 3px; padding: 3px 6px; border-left: 6px solid var(--c-borde); border-radius: 4px;
+  background: var(--c-fondo); color: var(--c-borde); font-size: 1rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-admin-cliente.pendiente, .cal-admin-lista li.pendiente { border-left-style: dashed; }
+.cal-admin-limpieza { --c-fondo: repeating-linear-gradient(135deg, #ecebe8 0 6px, #f6f5f2 6px 12px); --c-borde: #5f5f5f; font-style: italic; }
+.calendario-admin h2 { margin: 16px 0 12px; color: var(--verde); font-size: 1.5rem; }
+.cal-admin-lista, .calendario-admin .vacio { margin: 0 0 28px; }
+.cal-admin-lista { display: grid; gap: 10px; padding: 0; list-style: none; }
+@media (min-width: 720px) { .cal-admin-lista { grid-template-columns: repeat(2, 1fr); } }
+.cal-admin-lista li { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-left: 10px solid var(--c-borde); border-radius: var(--radio); background: var(--c-fondo); }
+.cal-admin-lista strong { font-size: 1.3rem; color: var(--c-borde); }
+.cal-admin-lista .estado { align-self: flex-start; }
+.cal-admin-lista a { color: var(--texto); }
+@media (max-width: 719px) {
+  .cal-admin td { height: 80px; padding: 2px; }
+  .cal-admin-dia { font-size: 1.1rem; }
+  .cal-admin-cliente { padding: 2px 3px; border-left-width: 4px; font-size: .75rem; }
+  .cal-admin-cliente b { display: none; } /* en el teléfono no cabe; el detalle está en la lista de abajo */
+  .cal-admin-cabecera h1 { font-size: 1.4rem; }
+  .cal-admin-nav { padding: 8px 10px; font-size: .95rem; }
+}
+.cliente-0 { --c-fondo: #dbe9fb; --c-borde: #1f4f8a; }
+.cliente-1 { --c-fondo: #fde2cf; --c-borde: #9a420c; }
+.cliente-2 { --c-fondo: #e6dcf7; --c-borde: #5b3a9a; }
+.cliente-3 { --c-fondo: #d3f0ea; --c-borde: #11665a; }
+.cliente-4 { --c-fondo: #fbdde8; --c-borde: #9c2457; }
+.cliente-5 { --c-fondo: #e8efc9; --c-borde: #4d5e12; }
+.cliente-6 { --c-fondo: #ece3d6; --c-borde: #6b4a22; }
+.cliente-7 { --c-fondo: #dfe3e8; --c-borde: #37474f; }
+
+/* Ciudad / "Soy extranjero" */
+.campo-ciudad { margin-bottom: 12px; }
+.campo-ciudad-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.campo-ciudad-cabecera label { margin: 0; }
+.boton-extranjero {
+  padding: 4px 12px; border: 1px solid var(--verde); border-radius: 999px;
+  background: #fff; color: var(--verde); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer;
+}
+.boton-extranjero[aria-pressed="true"] { background: var(--verde); color: #fff; }
+.boton-extranjero[aria-pressed="true"]::before { content: "✓ "; }
+.campo-ciudad select[hidden] { display: none; } /* select { display: block } le gana a hidden */
+
+/* Ganancias: un año como calendario de 12 meses, letra grande */
+.ganancias { font-size: 1.15rem; }
+.ganancias-total { margin: 4px 0 4px; text-align: center; font-size: 1.3rem; }
+.ganancias-total strong { display: block; color: var(--verde); font-size: 2.4rem; }
+.ganancias .intro { text-align: center; font-size: 1rem; }
+.ganancias-meses { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 720px) { .ganancias-meses { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .ganancias-meses { grid-template-columns: repeat(4, 1fr); } }
+.ganancias-mes {
+  display: flex; flex-direction: column; gap: 2px; padding: 14px 16px;
+  border: 1px solid var(--borde); border-radius: var(--radio); background: #fff; color: var(--texto); text-decoration: none;
+}
+.ganancias-mes:hover { border-color: var(--verde); }
+.ganancias-mes.actual { outline: 3px solid var(--verde); outline-offset: -3px; }
+.ganancias-nombre { font-weight: 700; font-size: 1.2rem; }
+.ganancias-nombre small { color: var(--suave); font-weight: 500; font-size: .85rem; }
+.ganancias-mes strong { color: var(--verde); font-size: 1.6rem; overflow-wrap: anywhere; }
+.ganancias-mes > span:last-child { color: var(--suave); font-size: 1rem; }
+.ganancias-mes.vacio-mes { background: var(--fondo); }
+.ganancias-mes.vacio-mes strong { color: var(--suave); }
+.ganancias-mes[aria-current] { border-color: var(--verde); background: var(--verde-claro); }
+.ganancias-resumen { margin-top: 20px; scroll-margin-top: 16px; }
+.ganancias-resumen-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ganancias-resumen h2 { margin: 0; color: var(--verde); font-size: 1.5rem; }
+.ganancias-detalle { display: grid; gap: 8px; margin: 16px 0 12px; padding: 0; list-style: none; }
+.ganancias-detalle li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--borde); border-radius: var(--radio); }
+.ganancias-detalle li div { display: flex; flex-direction: column; }
+.ganancias-detalle li span { color: var(--suave); font-size: 1rem; }
+.ganancias-detalle li span.saldo { color: #7a5300; font-weight: 600; }
+.ganancias-detalle b { color: var(--verde); font-size: 1.4rem; white-space: nowrap; }
+.ganancias-resumen a:not(.cal-admin-nav) { color: var(--verde); font-weight: 600; }

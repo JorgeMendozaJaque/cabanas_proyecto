@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../src/db.php';
+require __DIR__ . '/../src/ciudades.php';
 $cabanas = db()->query('SELECT id, nombre, capacidad, precio_noche FROM cabanas WHERE activa ORDER BY id')->fetchAll();
 $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
@@ -25,7 +26,25 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       <fieldset>
         <legend>1. Tus datos</legend>
         <label>Nombre <input name="nombre" data-solo="letras" required minlength="2" maxlength="100" pattern="\p{L}[\p{L} '.\-]*" title="Solo letras, espacios, apóstrofo, punto o guion." autocomplete="name"></label>
-        <label>Ciudad <input name="ciudad" data-solo="letras" required minlength="2" maxlength="100" pattern="\p{L}[\p{L} '.\-]*" title="Solo letras, espacios, apóstrofo, punto o guion." autocomplete="address-level2"></label>
+        <div class="campo-ciudad">
+          <div class="campo-ciudad-cabecera">
+            <label for="ciudad" id="ciudad-titulo">Ciudad</label>
+            <button type="button" id="extranjero" class="boton-extranjero" aria-pressed="false">Soy extranjero</button>
+          </div>
+          <!-- Solo uno de los dos está habilitado: el deshabilitado no se envía ni se exige. -->
+          <select id="ciudad" name="ciudad" required autocomplete="address-level2">
+            <option value="">Elige tu región y ciudad</option>
+            <?php foreach (CIUDADES as $region => $ciudades): ?>
+              <optgroup label="<?= $e($region) ?>">
+                <?php foreach ($ciudades as $c): ?><option><?= $e($c) ?></option><?php endforeach ?>
+              </optgroup>
+            <?php endforeach ?>
+          </select>
+          <select id="pais" name="ciudad" required autocomplete="country-name" hidden disabled>
+            <option value="">Elige tu país</option>
+            <?php foreach (PAISES as $p): ?><option><?= $e($p) ?></option><?php endforeach ?>
+          </select>
+        </div>
         <div class="fila">
           <label>Teléfono 1 <input type="tel" name="telefono" data-solo="telefono" required minlength="8" maxlength="16" pattern="\+?[0-9]{8,15}" title="Solo números (8 a 15), con + opcional al inicio." placeholder="+56912345678" inputmode="tel" autocomplete="tel"></label>
           <label>Teléfono 2 <span class="opcional">(opcional)</span> <input type="tel" name="telefono2" data-solo="telefono" minlength="8" maxlength="16" pattern="\+?[0-9]{8,15}" title="Solo números (8 a 15), con + opcional al inicio." inputmode="tel"></label>
@@ -49,7 +68,7 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
             </select>
           </label>
           <label class="corto">Personas <span class="opcional">(máx. <span id="capacidad"><?= $e($cabanas[0]['capacidad']) ?></span>)</span>
-            <input type="number" name="personas" min="1" max="<?= $e($cabanas[0]['capacidad']) ?>" value="1" step="1" required inputmode="numeric">
+            <input type="number" name="personas" min="1" max="<?= $e($cabanas[0]['capacidad']) ?>" step="1" required inputmode="numeric">
           </label>
         </div>
 

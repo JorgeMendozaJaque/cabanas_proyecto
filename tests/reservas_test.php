@@ -52,6 +52,12 @@ try {
     echo "Tipo de texto por campo\n";
     chequear(!$pedir(110, 111, ['nombre' => 'Ana 2'])['ok'], 'rechaza números en el nombre');
     chequear(!$pedir(110, 111, ['ciudad' => 'Temuco123'])['ok'], 'rechaza números en la ciudad');
+    chequear(!$pedir(110, 111, ['ciudad' => 'Gotham'])['ok'], 'rechaza ciudad que no está en la lista');
+    chequear($pedir(110, 111, ['ciudad' => 'Argentina'])['ok'], 'acepta un país (botón "Soy extranjero")');
+    db()->exec("DELETE FROM reservas WHERE ciudad = 'Argentina' AND email LIKE '%@test.invalid'"); // libera +110 para las pruebas siguientes
+    chequear(!in_array('Chile', PAISES, true), 'Chile no está en la lista de países');
+    $todas = array_merge(PAISES, ...array_values(CIUDADES));
+    chequear(count($todas) === count(array_unique($todas)), 'la lista no repite ciudades entre regiones');
     chequear(!$pedir(110, 111, ['nombre' => 'Ana <b>'])['ok'], 'rechaza símbolos en el nombre');
     chequear(!$pedir(110, 111, ['telefono' => '+56 9 1234 5678'])['ok'], 'rechaza espacios en el teléfono');
     chequear(!$pedir(110, 111, ['telefono' => '5691234567x'])['ok'], 'rechaza letras en el teléfono');
@@ -68,8 +74,13 @@ try {
     echo "Choque de fechas (ya existe una reserva del día +100 al +103)\n";
     $r = $pedir(102, 105);
     chequear(!$r['ok'] && !empty($r['ocupado']), 'rechaza si se cruza con una pendiente');
-    chequear($pedir(103, 104)['ok'], 'acepta entrar el mismo día en que el otro sale');
-    chequear($pedir(98, 100)['ok'], 'acepta salir el mismo día en que el otro entra');
+    chequear(!$pedir(103, 104)['ok'], 'limpieza: rechaza llegar el día en que el otro sale');
+    chequear(!$pedir(104, 106)['ok'], 'limpieza: rechaza llegar el día de limpieza');
+    chequear($pedir(105, 106)['ok'], 'limpieza: acepta llegar 2 días después de la salida');
+    chequear(!$pedir(98, 100)['ok'], 'limpieza: rechaza salir el día en que el otro llega');
+    chequear(!$pedir(97, 99)['ok'], 'limpieza: rechaza salir el día antes de que el otro llegue');
+    chequear($pedir(96, 98)['ok'], 'limpieza: acepta salir 2 días antes de que el otro llegue');
+    chequear(in_array(['desde' => $d(98), 'hasta' => $d(105)], dias_ocupados($C), true), 'la disponibilidad muestra la reserva +100→+103 con limpieza: noches [+98, +105)');
     db()->exec("UPDATE reservas SET estado = 'rechazada' WHERE email LIKE '%@test.invalid' AND fecha_entrada = '{$d(100)}'");
     chequear($pedir(100, 103)['ok'], 'una rechazada libera las fechas');
 

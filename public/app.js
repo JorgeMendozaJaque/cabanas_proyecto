@@ -133,6 +133,20 @@ form.personas.addEventListener('keydown', (e) => {
   if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
 });
 
+// "Soy extranjero": cambia la lista de ciudades de Chile por la de países.
+document.getElementById('extranjero').addEventListener('click', (e) => {
+  const extranjero = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', extranjero);
+  const [visible, oculto] = extranjero ? ['pais', 'ciudad'] : ['ciudad', 'pais'];
+  for (const [id, ver] of [[visible, true], [oculto, false]]) {
+    const select = document.getElementById(id);
+    select.hidden = select.disabled = !ver;
+  }
+  const titulo = document.getElementById('ciudad-titulo');
+  titulo.htmlFor = visible;
+  titulo.textContent = extranjero ? 'País' : 'Ciudad';
+});
+
 form.cabana_id.addEventListener('change', () => {
   mostrar('');
   cargarDisponibilidad();

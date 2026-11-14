@@ -71,7 +71,7 @@ Una reserva ocupa las noches desde `fecha_entrada` hasta el día anterior a `fec
 La regla se aplica en 2 lugares:
 
 1. **El calendario del formulario** muestra los días ocupados y cerrados, y no deja elegirlos. Es solo ayuda visual; el navegador no es de confianza.
-2. **El PHP que guarda la solicitud** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `pendiente`/`aceptada`/`pagada` y con bloqueos y, si no hay, se inserta. Si dos personas envían la misma fecha al mismo tiempo, la segunda espera a que termine la primera y recibe "fechas no disponibles". Así nunca hay overbooking. Las tablas deben ser InnoDB.
+2. **El PHP que guarda la solicitud** es el control real. MySQL no tiene restricciones de exclusión como PostgreSQL, así que se hace en una transacción: `SELECT ... FROM cabanas WHERE id = ? FOR UPDATE` (bloquea esa cabaña), luego se buscan choques con reservas `pendiente`/`aceptada`/`pagada` y con bloqueos y, si no hay, se inserta. Si dos personas envían la misma fecha al mismo tiempo, la segunda espera a que termine la primera y recibe "fechas no disponibles". Así nunca hay overbooking. Las tablas deben ser InnoDB. Entre una reserva y otra quedan 2 noches libres para limpieza y mantención (`NOCHES_LIMPIEZA` en `src/reservas.php`): si alguien se va el 26, el siguiente llega el 28.
 
 El cierre de días del admin usa la misma transacción: bloquea la cabaña y revisa que no haya reservas en ese rango antes de guardar.
 

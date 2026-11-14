@@ -1,10 +1,14 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/ciudades.php';
 
 const MAX_NOCHES = 30;
 const MAX_DIAS_ANTICIPACION = 365;
 // Estados que apartan fechas (opción B: la primera solicitud en llegar bloquea).
 const ESTADOS_QUE_BLOQUEAN = "('pendiente','aceptada','pagada')";
+// Noches libres entre reservas: la del día de salida y un día completo de limpieza y mantención.
+// Si alguien se va el 26, el siguiente llega el 28 (y quien reserve antes debe irse a más tardar 2 días antes de la llegada).
+const NOCHES_LIMPIEZA = 2;
 
 function fecha_valida(string $f): bool
 {
@@ -38,8 +42,7 @@ function validar_reserva(array $r): ?string
     $letras = "/^\p{L}[\p{L} '.-]*$/u";
     if (mb_strlen($r['nombre']) < 2 || mb_strlen($r['nombre']) > 100) return 'Escribe tu nombre.';
     if (!preg_match($letras, $r['nombre'])) return 'El nombre solo puede tener letras.';
-    if (mb_strlen($r['ciudad']) < 2 || mb_strlen($r['ciudad']) > 100) return 'Escribe tu ciudad.';
-    if (!preg_match($letras, $r['ciudad'])) return 'La ciudad solo puede tener letras.';
+    if (!ciudad_valida($r['ciudad'])) return 'Elige tu ciudad de la lista.';
 
     $telefono = '/^\+?[0-9]{8,15}$/'; // máximo internacional: 15 dígitos
     if (!preg_match($telefono, $r['telefono'])) return 'El teléfono 1 no es válido.';
@@ -97,7 +100,8 @@ function crear_reserva(array $datos): array
 
         $st = $db->prepare(
             'SELECT EXISTS(SELECT 1 FROM reservas WHERE cabana_id = ? AND estado IN ' . ESTADOS_QUE_BLOQUEAN . '
-                 AND fecha_entrada < ? AND fecha_salida > ?)
+                 AND fecha_entrada < DATE_ADD(?, INTERVAL ' . NOCHES_LIMPIEZA . ' DAY)
+                 AND DATE_ADD(fecha_salida, INTERVAL ' . NOCHES_LIMPIEZA . ' DAY) > ?)
              OR EXISTS(SELECT 1 FROM bloqueos WHERE cabana_id = ? AND fecha_inicio < ? AND fecha_fin >= ?)'
         );
         $st->execute([$r['cabana_id'], $r['fecha_salida'], $r['fecha_entrada'], $r['cabana_id'], $r['fecha_salida'], $r['fecha_entrada']]);
@@ -121,15 +125,17 @@ function crear_reserva(array $datos): array
 }
 
 // Rangos ocupados o cerrados desde hoy, como noches [desde, hasta). Sin datos de clientes.
+// Las reservas se amplían NOCHES_LIMPIEZA hacia ambos lados, igual que el chequeo de crear_reserva.
 function dias_ocupados(int $cabana_id): array
 {
+    $n = NOCHES_LIMPIEZA;
     $st = db()->prepare(
-        'SELECT fecha_entrada AS desde, fecha_salida AS hasta FROM reservas
-           WHERE cabana_id = ? AND estado IN ' . ESTADOS_QUE_BLOQUEAN . ' AND fecha_salida > ?
+        "SELECT DATE_SUB(fecha_entrada, INTERVAL $n DAY) AS desde, DATE_ADD(fecha_salida, INTERVAL $n DAY) AS hasta FROM reservas
+           WHERE cabana_id = ? AND estado IN " . ESTADOS_QUE_BLOQUEAN . " AND DATE_ADD(fecha_salida, INTERVAL $n DAY) > ?
          UNION ALL
          SELECT fecha_inicio, DATE_ADD(fecha_fin, INTERVAL 1 DAY) FROM bloqueos
            WHERE cabana_id = ? AND fecha_fin >= ?
-         ORDER BY desde'
+         ORDER BY desde"
     );
     $hoy = hoy_chile();
     $st->execute([$cabana_id, $hoy, $cabana_id, $hoy]);

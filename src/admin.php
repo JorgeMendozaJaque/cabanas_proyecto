@@ -112,6 +112,51 @@ function listar_reservas(?string $estado): array
     return $st->fetchAll();
 }
 
+// Reservas activas que tocan el mes 'YYYY-MM', incluido el día de limpieza que sigue a la salida.
+function reservas_del_mes(string $mes): array
+{
+    $inicio = "$mes-01";
+    $st = db()->prepare('SELECT r.id, r.nombre, r.estado, r.personas, r.telefono, r.fecha_entrada, r.fecha_salida, c.nombre AS cabana
+                         FROM reservas r JOIN cabanas c ON c.id = r.cabana_id
+                         WHERE r.estado IN ' . ESTADOS_QUE_BLOQUEAN . ' AND r.fecha_entrada <= ? AND DATE_ADD(r.fecha_salida, INTERVAL 1 DAY) >= ?
+                         ORDER BY r.fecha_entrada, r.id');
+    $st->execute([date('Y-m-t', strtotime($inicio)), $inicio]);
+    return $st->fetchAll();
+}
+
+/**
+ * Ganancias de un año por mes (1..12 => monto, noches, reservas), solo reservas aceptadas.
+ * Cada noche suma al mes en que se duerme, así una estadía entre dos meses se reparte.
+ */
+function ganancias_del_ano(int $ano): array
+{
+    $meses = array_fill(1, 12, ['monto' => 0, 'noches' => 0, 'reservas' => 0, 'detalle' => []]);
+    $st = db()->prepare("SELECT r.id, r.nombre, r.fecha_entrada, r.fecha_salida, r.monto, r.pagado, c.nombre AS cabana
+                         FROM reservas r JOIN cabanas c ON c.id = r.cabana_id
+                         WHERE r.estado IN ('aceptada','pagada') AND r.fecha_entrada < ? AND r.fecha_salida > ?
+                         ORDER BY r.fecha_entrada, r.id");
+    $st->execute([($ano + 1) . '-01-01', "$ano-01-01"]);
+    foreach ($st->fetchAll() as $r) {
+        $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
+        $porNoche = intdiv($r['monto'], $noches);
+        $resto = $r['monto'] - $porNoche * $noches; // si no divide exacto, el sobrante va a la primera noche
+        $f = new DateTimeImmutable($r['fecha_entrada'], new DateTimeZone('UTC'));
+        for ($i = 0; $i < $noches; $i++, $f = $f->modify('+1 day')) {
+            if ((int) $f->format('Y') !== $ano) continue;
+            $m = (int) $f->format('n');
+            $suma = $porNoche + ($i === 0 ? $resto : 0);
+            $meses[$m]['monto'] += $suma;
+            $meses[$m]['noches']++;
+            // Detalle por reserva: cuánto y cuántas noches aportó a este mes.
+            $meses[$m]['detalle'][$r['id']] ??= $r + ['noches_mes' => 0, 'monto_mes' => 0];
+            $meses[$m]['detalle'][$r['id']]['noches_mes']++;
+            $meses[$m]['detalle'][$r['id']]['monto_mes'] += $suma;
+        }
+    }
+    foreach ($meses as &$mes) $mes['reservas'] = count($mes['detalle']);
+    return $meses;
+}
+
 function contar_por_estado(): array
 {
     return db()->query('SELECT estado, COUNT(*) FROM reservas GROUP BY estado')->fetchAll(PDO::FETCH_KEY_PAIR);

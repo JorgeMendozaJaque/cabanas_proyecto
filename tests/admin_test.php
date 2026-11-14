@@ -68,9 +68,38 @@ try {
     chequear($cerrar(230, 231, ['motivo' => str_repeat('x', 201)]) !== null, 'rechaza motivo de más de 200 caracteres');
     chequear(!crear_reserva(['cabana_id' => $C, 'personas' => 2, 'nombre' => 'Otro', 'ciudad' => 'Temuco', 'telefono' => '+56912345678',
         'email' => 'otro@test.invalid', 'fecha_entrada' => $d(203), 'fecha_salida' => $d(204)])['ok'], 'un cliente no puede reservar días cerrados');
+    // +209 → +210 queda libre con la limpieza: la anterior sale el +207 y la siguiente llega el +215.
+    chequear($cerrar(209, 210) === null && !crear_reserva(['cabana_id' => $C, 'personas' => 2, 'nombre' => 'Otro', 'ciudad' => 'Temuco', 'telefono' => '+56912345678',
+        'email' => 'otro@test.invalid', 'fecha_entrada' => $d(209), 'fecha_salida' => $d(210)])['ok'], 'cierra días libres');
     $id = (int) db()->query("SELECT id FROM bloqueos WHERE motivo = 'test' ORDER BY id DESC LIMIT 1")->fetchColumn();
     chequear(borrar_bloqueo($id), 'reabrir días');
-    chequear((bool) $reservar(203, 204), 'tras reabrir, el cliente puede reservar');
+    chequear((bool) $reservar(209, 210), 'tras reabrir, el cliente puede reservar');
+
+    echo "Calendario del mes\n";
+    $mes = substr($d(300), 0, 7);
+    $n = dias_entre(hoy_chile(), "$mes-01"); // día 1 del mes, contado desde hoy
+    $sale1 = $reservar($n - 2, $n);      // se va el día 1
+    $antes = $reservar($n - 8, $n - 5);  // termina el mes anterior, con su limpieza
+    $rech = $reservar($n + 3, $n + 5);
+    cambiar_estado($rech, 'rechazar');
+    $ids = array_column(array_filter(reservas_del_mes($mes), fn($r) => $r['cabana'] === 'Cabaña de prueba'), 'id');
+    chequear(in_array($sale1, $ids), 'muestra a quien se va el día 1');
+    chequear(!in_array($antes, $ids), 'no muestra reservas del mes anterior');
+    chequear(!in_array($rech, $ids), 'no muestra rechazadas');
+
+    echo "Ganancias por mes\n";
+    $sig = (new DateTimeImmutable("$mes-01"))->modify('+1 month')->format('Y-m'); // mes siguiente al del calendario
+    $n2 = dias_entre(hoy_chile(), "$sig-01");
+    $g = fn() => [ganancias_del_ano((int) $mes)[(int) substr($mes, 5)], ganancias_del_ano((int) $sig)[(int) substr($sig, 5)]];
+    [$a0, $b0] = $g();
+    $cruza = $reservar($n2 - 1, $n2 + 2); // 1 noche en un mes y 2 en el siguiente, $80.000 c/u
+    [$a1, $b1] = $g();
+    chequear($a1 === $a0 && $b1 === $b0, 'una pendiente no suma');
+    cambiar_estado($cruza, 'aceptar_abono');
+    [$a2, $b2] = $g();
+    chequear($a2['monto'] - $a0['monto'] === 80000 && $a2['noches'] - $a0['noches'] === 1, 'estadía entre dos meses: 1 noche al primero');
+    chequear($b2['monto'] - $b0['monto'] === 160000 && $b2['noches'] - $b0['noches'] === 2 && $b2['reservas'] - $b0['reservas'] === 1, 'y 2 noches al segundo, contada como 1 reserva');
+    chequear(($a2['detalle'][$cruza]['monto_mes'] ?? 0) === 80000 && ($b2['detalle'][$cruza]['noches_mes'] ?? 0) === 2, 'el resumen del mes detalla lo que aportó cada reserva');
 
     echo "Login\n";
     db()->prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)')
