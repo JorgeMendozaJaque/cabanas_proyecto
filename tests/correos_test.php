@@ -38,6 +38,11 @@ chequear(str_contains($total[2], 'pagada por completo'), 'aceptada con pago tota
 $rech = mensaje_decision(['estado' => 'rechazada'] + $r);
 chequear(str_contains($rech[2], 'fechas se liberaron') && $rech[0] === $acep[0], 'rechazada: avisa que se liberaron, a los mismos correos');
 
+echo "Recordatorio\n";
+$rec = mensaje_recordatorio($r);
+chequear($rec[0] === $cliente[0] && str_contains($rec[1], '24 horas'), 'va al cliente y dice cuánto le queda');
+chequear(str_contains($rec[2], '16-11-2026 a las 10:00') && str_contains($rec[2], '$120.000') && str_contains($rec[2], config()['transferencia']['numero_cuenta']), 'plazo, abono y datos de transferencia');
+
 if (in_array('--enviar', $argv, true)) {
     echo "Envío real\n";
     chequear(enviar_correo([config()['resend']['admin_email']], 'Prueba de correo de Cabañas', "Si lees esto, Resend funciona.\n\n" . $cliente[2]), 'Resend aceptó el correo');

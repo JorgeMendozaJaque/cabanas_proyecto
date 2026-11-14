@@ -2,6 +2,7 @@
 // Prueba de la lógica del panel admin contra la base local. Uso: php tests/admin_test.php
 // Solo crea y borra filas de prueba (correos @test.invalid, motivo 'test').
 require __DIR__ . '/../src/admin.php';
+require __DIR__ . '/../src/correos.php';
 
 $fallas = 0;
 function chequear(bool $ok, string $que): void
@@ -90,6 +91,24 @@ try {
     $cerrar($n + 40, $n + 41); // ya es el mes siguiente
     $cerrados = array_filter(bloqueos_del_mes($mes), fn($b) => $b['cabana'] === 'Cabaña de prueba');
     chequear(count($cerrados) === 1 && reset($cerrados)['motivo'] === 'test', 'muestra los días cerrados del mes con su motivo');
+
+    echo "Recordatorio de pago (los correos a @test.invalid fallan: solo se prueba a quién le toca)\n";
+    $hace = fn(int $id, int $horas) => db()->exec("UPDATE reservas SET creada_en = NOW() - INTERVAL $horas HOUR WHERE id = $id");
+    $marcado = fn(int $id) => db()->query("SELECT recordatorio_en IS NOT NULL FROM reservas WHERE id = $id")->fetchColumn() == 1;
+    $hace($r23 = $reservar(150, 151), 23);
+    $hace($r25 = $reservar(155, 156), 25);
+    $hace($r49 = $reservar(160, 161), 49);
+    $hace($rAcep = $reservar(165, 166), 25);
+    cambiar_estado($rAcep, 'aceptar_abono');
+    @enviar_recordatorios();
+    chequear($marcado($r25), 'le toca a la pendiente con 25 h');
+    chequear(!$marcado($r23), 'no le toca a la de 23 h');
+    chequear(!$marcado($r49), 'no le toca a la que ya venció');
+    chequear(!$marcado($rAcep), 'no le toca a una aceptada');
+    $antes = db()->query("SELECT recordatorio_en FROM reservas WHERE id = $r25")->fetchColumn();
+    db()->exec("UPDATE reservas SET recordatorio_en = '2000-01-01' WHERE id = $r25");
+    @enviar_recordatorios();
+    chequear(db()->query("SELECT recordatorio_en FROM reservas WHERE id = $r25")->fetchColumn() === '2000-01-01 00:00:00' && $antes, 'no se envía dos veces');
 
     echo "Ganancias por mes\n";
     $sig = (new DateTimeImmutable("$mes-01"))->modify('+1 month')->format('Y-m'); // mes siguiente al del calendario

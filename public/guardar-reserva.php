@@ -8,6 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+    // Revisión de DNS solo aquí, en la entrada pública: crear_reserva() queda sin red (y las pruebas usan @test.invalid).
+    foreach (['email' => 'El correo 1', 'email2' => 'El correo 2'] as $campo => $nombre) {
+        $v = trim((string) ($_POST[$campo] ?? ''));
+        if (filter_var($v, FILTER_VALIDATE_EMAIL) && !dominio_recibe_correo($v)) {
+            http_response_code(422);
+            exit(json_encode(['ok' => false, 'error' => "$nombre parece tener un error: revisa lo que va después de @."]));
+        }
+    }
     $resultado = crear_reserva($_POST);
     if ($resultado['ok']) {
         // Solo quien hizo la reserva puede ver su página de confirmación (no se expone por id en la URL).

@@ -28,6 +28,7 @@ CREATE TABLE reservas (
   estado ENUM('pendiente','aceptada','rechazada','pagada','cancelada') NOT NULL DEFAULT 'pendiente', -- 'pagada' y 'cancelada' ya no se usan
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   aceptada_en DATETIME NULL, -- desde aquí corren las 48 h para pagar
+  recordatorio_en DATETIME NULL, -- cuándo se envió el recordatorio de pago (a las 24 h); NULL = aún no
   FOREIGN KEY (cabana_id) REFERENCES cabanas(id),
   CHECK (fecha_salida > fecha_entrada),
   INDEX (cabana_id, estado, fecha_entrada)

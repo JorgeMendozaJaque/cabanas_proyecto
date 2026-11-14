@@ -48,10 +48,22 @@ function resumen_reserva(array $r): string
         . 'Total de la estadía: ' . pesos($r['monto']) . "\n";
 }
 
+function datos_transferencia(array $r): string
+{
+    $t = config()['transferencia'];
+    return "Datos para transferencia:\n"
+        . "Banco: {$t['banco']}\n"
+        . "Tipo de cuenta: {$t['tipo_cuenta']}\n"
+        . "N° de cuenta: {$t['numero_cuenta']}\n"
+        . "Titular: {$t['titular']}\n"
+        . "RUT: {$t['rut']}\n"
+        . "Correo: {$t['email']}\n"
+        . "Comentario: Reserva N° {$r['id']}\n";
+}
+
 // [para, asunto, texto] de cada correo. Separados del envío para poder probarlos sin red.
 function mensajes_reserva_nueva(array $r): array
 {
-    $t = config()['transferencia'];
     $pct = config()['abono_porcentaje'];
     $plazo = plazo_pago($r['creada_en']);
     $nombre = strtok($r['nombre'], ' ');
@@ -78,14 +90,7 @@ function mensajes_reserva_nueva(array $r): array
             . 'Saldo al llegar: ' . pesos($r['monto'] - $r['abono']) . "\n\n"
             . "Para confirmar, transfiere al menos el abono de " . pesos($r['abono']) . " antes del $plazo. "
             . 'Si prefieres, puedes pagar el total de ' . pesos($r['monto']) . " de una vez.\n\n"
-            . "Datos para transferencia:\n"
-            . "Banco: {$t['banco']}\n"
-            . "Tipo de cuenta: {$t['tipo_cuenta']}\n"
-            . "N° de cuenta: {$t['numero_cuenta']}\n"
-            . "Titular: {$t['titular']}\n"
-            . "RUT: {$t['rut']}\n"
-            . "Correo: {$t['email']}\n"
-            . "Comentario: Reserva N° {$r['id']}\n\n"
+            . datos_transferencia($r) . "\n"
             . "El abono es la garantía de tu reserva y no es reembolsable. "
             . "Si no recibimos el abono en el plazo, la solicitud se anula y las fechas se liberan.\n"
             . 'Te avisaremos por correo cuando confirmemos tu pago.',
@@ -117,6 +122,39 @@ function mensaje_decision(array $r): array
         . resumen_reserva($r)
         . "\nSi aún quieres venir, puedes hacer una nueva solicitud en nuestra web.",
     ];
+}
+
+function mensaje_recordatorio(array $r): array
+{
+    $nombre = strtok($r['nombre'], ' ');
+    $plazo = plazo_pago($r['creada_en']);
+    return [
+        [$r['email'], $r['email2']],
+        "Recordatorio: te quedan 24 horas para confirmar tu reserva N° {$r['id']}",
+        "Hola $nombre,\n\n"
+        . "Tus fechas siguen apartadas, pero aún no recibimos tu abono. "
+        . 'Para confirmar, transfiere al menos ' . pesos($r['abono']) . " antes del $plazo. "
+        . "Si no llega a tiempo, la solicitud se anula y las fechas se liberan.\n\n"
+        . resumen_reserva($r) . "\n"
+        . datos_transferencia($r) . "\n"
+        . 'Si ya transferiste, ignora este correo: te avisaremos cuando confirmemos tu pago.',
+    ];
+}
+
+// Recordatorio a las pendientes que llevan 24 h sin pagar (aún dentro del plazo de 48 h).
+// Se marca antes de enviar, así nunca llega dos veces aunque el envío falle o dos ejecuciones se crucen.
+function enviar_recordatorios(): int
+{
+    $ids = db()->query("SELECT id FROM reservas WHERE estado = 'pendiente' AND recordatorio_en IS NULL
+                        AND creada_en <= NOW() - INTERVAL 24 HOUR AND creada_en > NOW() - INTERVAL 48 HOUR")
+        ->fetchAll(PDO::FETCH_COLUMN);
+    $enviados = 0;
+    foreach ($ids as $id) {
+        $st = db()->prepare('UPDATE reservas SET recordatorio_en = NOW() WHERE id = ? AND recordatorio_en IS NULL');
+        $st->execute([$id]);
+        if ($st->rowCount() === 1 && enviar_correo(...mensaje_recordatorio(reserva_para_correo($id)))) $enviados++;
+    }
+    return $enviados;
 }
 
 // Correo al admin y al cliente cuando entra una solicitud.

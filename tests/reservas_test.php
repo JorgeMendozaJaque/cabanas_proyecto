@@ -56,6 +56,8 @@ try {
     chequear($pedir(110, 111, ['ciudad' => 'Argentina'])['ok'], 'acepta un país (botón "Soy extranjero")');
     db()->exec("DELETE FROM reservas WHERE ciudad = 'Argentina' AND email LIKE '%@test.invalid'"); // libera +110 para las pruebas siguientes
     chequear(!in_array('Chile', PAISES, true), 'Chile no está en la lista de países');
+    chequear(dominio_recibe_correo('ana@gmail.com') && dominio_recibe_correo('ana@Hotmail.com'), 'acepta dominios de correo reales');
+    chequear(!dominio_recibe_correo('ana@gmial.con') && !dominio_recibe_correo('ana@asdasdqwe123.cl'), 'rechaza dominios que no reciben correo');
     chequear(region_de('Temuco') === 'La Araucanía' && region_de('Argentina') === 'Extranjero' && region_de('X') === '', 'región de cada ciudad');
     $todas = array_merge(PAISES, ...array_values(CIUDADES));
     chequear(count($todas) === count(array_unique($todas)), 'la lista no repite ciudades entre regiones');

@@ -40,6 +40,14 @@ function plazo_pago(string $creada_en): string
     return date('d-m-Y \a \l\a\s H:i', strtotime($creada_en . ' +48 hours'));
 }
 
+// ¿El dominio del correo puede recibir correos (MX, o A como respaldo)? Atrapa errores como "gmial.con".
+// Si el DNS del servidor no responde, lo deja pasar para no bloquear reservas.
+function dominio_recibe_correo(string $email): bool
+{
+    $dominio = substr(strrchr($email, '@'), 1) . '.'; // el punto final evita que se le agregue el dominio local
+    return checkdnsrr($dominio, 'MX') || checkdnsrr($dominio, 'A') || !checkdnsrr('gmail.com.', 'MX');
+}
+
 function hoy_chile(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone('America/Santiago')))->format('Y-m-d');
