@@ -30,6 +30,9 @@ chequear(str_contains($cliente[2], '30 de diciembre de 2026') && str_contains($c
 chequear(str_contains($cliente[2], '$120.000') && str_contains($cliente[2], 'Saldo al llegar: $120.000'), 'abono y saldo');
 chequear(str_contains($cliente[2], '16-11-2026 a las 10:00'), 'plazo de 48 h');
 chequear(str_contains($cliente[2], config()['transferencia']['numero_cuenta']), 'datos de transferencia');
+chequear(str_contains($cliente[3], 'cid:banner') && str_contains($cliente[3], 'Ana María Pérez') === false && str_contains($cliente[3], 'Hola Ana,'), 'versión HTML con el banner arriba');
+$x = mensaje_decision(['estado' => 'rechazada', 'nombre' => '<b>Ana</b>'] + $r);
+chequear(!str_contains($x[3], '<b>Ana') && str_contains($x[3], '&lt;b&gt;Ana'), 'el HTML escapa lo que escribió el cliente');
 
 echo "Decisión\n";
 $acep = mensaje_decision(['estado' => 'aceptada', 'pagado' => 120000] + $r);
@@ -46,7 +49,7 @@ chequear(str_contains($rec[2], '16-11-2026 a las 10:00') && str_contains($rec[2]
 
 if (in_array('--enviar', $argv, true)) {
     echo "Envío real\n";
-    chequear(enviar_correo([config()['resend']['admin_email']], 'Prueba de correo de Cabañas', "Si lees esto, Resend funciona.\n\n" . $cliente[2]), 'Resend aceptó el correo');
+    chequear(enviar_correo([config()['resend']['admin_email']], 'Prueba: ' . $cliente[1], $cliente[2], $cliente[3]), 'Resend aceptó el correo (el del cliente, con banner)');
 }
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodo bien\n";
