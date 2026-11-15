@@ -19,12 +19,9 @@ try {
     $resultado = crear_reserva($_POST);
     if ($resultado['ok']) {
         // Solo quien hizo la reserva puede ver su página de confirmación (no se expone por id en la URL).
-        session_name('cabanas_reserva');
-        session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS'])]);
-        session_start();
+        sesion_reserva();
         $_SESSION['reserva_id'] = $resultado['id'];
         session_write_close();
-        correos_reserva_nueva($resultado['id']);
     } else {
         http_response_code(empty($resultado['ocupado']) ? 422 : 409);
     }
@@ -34,3 +31,9 @@ try {
     $resultado = ['ok' => false, 'error' => 'No pudimos guardar la solicitud. Intenta de nuevo en unos minutos.'];
 }
 echo json_encode($resultado);
+
+if ($resultado['ok']) {
+    // Responde al cliente antes de enviar los correos (solo con PHP-FPM; con `php -S` espera como antes).
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    correos_reserva_nueva($resultado['id']);
+}

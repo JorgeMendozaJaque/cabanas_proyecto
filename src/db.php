@@ -1,4 +1,7 @@
 <?php
+// Una sola zona horaria para PHP y MySQL; si no, en un hosting en UTC el plazo de pago sale 3 h corrido.
+date_default_timezone_set('America/Santiago');
+
 function config(): array
 {
     static $config;
@@ -21,6 +24,7 @@ function db(): PDO
                 PDO::ATTR_EMULATE_PREPARES => false, // sentencias preparadas reales en MySQL
             ]
         );
+        $pdo->exec("SET time_zone = '" . date('P') . "'"); // desfase actual de Chile (-03:00 o -04:00)
     }
     return $pdo;
 }

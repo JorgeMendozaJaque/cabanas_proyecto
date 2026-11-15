@@ -13,6 +13,8 @@ const ESTADOS = ['pendiente', 'aceptada', 'rechazada'];
 function iniciar_sesion(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) return;
+    header('X-Frame-Options: DENY'); // que otra web no pueda cargar el panel escondido y hacer clic por el admin
+    header('X-Content-Type-Options: nosniff');
     session_name('cabanas_admin');
     session_set_cookie_params([
         'path' => '/',

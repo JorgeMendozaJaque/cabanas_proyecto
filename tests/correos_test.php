@@ -1,6 +1,7 @@
 <?php
 // Prueba el contenido de los correos sin enviarlos. Uso: php tests/correos_test.php
 // Con --enviar, además manda un correo real de prueba al admin_email de config.php.
+if (PHP_SAPI !== 'cli') exit; // nunca desde el navegador: toca la base real
 require __DIR__ . '/../src/correos.php';
 
 $fallas = 0;

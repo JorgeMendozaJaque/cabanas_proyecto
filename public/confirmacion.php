@@ -1,9 +1,7 @@
 <?php
 require __DIR__ . '/../src/reservas.php';
 
-session_name('cabanas_reserva');
-session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS'])]);
-session_start();
+sesion_reserva();
 
 $id = (int) ($_SESSION['reserva_id'] ?? 0);
 $st = db()->prepare('SELECT r.id, r.nombre, r.fecha_entrada, r.fecha_salida, r.personas, r.monto, r.abono, r.creada_en, c.nombre AS cabana

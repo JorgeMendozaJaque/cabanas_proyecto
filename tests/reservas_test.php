@@ -1,6 +1,7 @@
 <?php
 // Prueba de crear_reserva contra la base local. Uso: php tests/reservas_test.php
 // Solo crea y borra filas marcadas como de prueba (correos @test.invalid, motivo 'test').
+if (PHP_SAPI !== 'cli') exit; // nunca desde el navegador: toca la base real
 require __DIR__ . '/../src/reservas.php';
 
 $fallas = 0;

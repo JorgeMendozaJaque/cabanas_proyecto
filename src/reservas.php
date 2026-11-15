@@ -48,6 +48,14 @@ function dominio_recibe_correo(string $email): bool
     return checkdnsrr($dominio, 'MX') || checkdnsrr($dominio, 'A') || !checkdnsrr('gmail.com.', 'MX');
 }
 
+// Sesión del cliente: guarda qué reserva puede ver en la página de confirmación.
+function sesion_reserva(): void
+{
+    session_name('cabanas_reserva');
+    session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off']);
+    session_start();
+}
+
 function hoy_chile(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone('America/Santiago')))->format('Y-m-d');

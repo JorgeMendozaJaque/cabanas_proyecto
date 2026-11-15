@@ -1,6 +1,7 @@
 <?php
 // Prueba de la lógica del panel admin contra la base local. Uso: php tests/admin_test.php
 // Solo crea y borra filas de prueba (correos @test.invalid, motivo 'test').
+if (PHP_SAPI !== 'cli') exit; // nunca desde el navegador: toca la base real
 require __DIR__ . '/../src/admin.php';
 require __DIR__ . '/../src/correos.php';
 
