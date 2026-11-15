@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error = editar_contacto($id, $_POST);
     if (!$error) {
         avisar("Datos de la reserva #$id guardados.");
-        header('Location: ./?q=' . $id);
+        header('Location: ./');
         exit;
     }
     $v = leer_contacto($_POST) + $reserva;
@@ -40,7 +40,7 @@ $opcion = fn(string $nombre) => '<option' . ($nombre === $v['ciudad'] ? ' select
 </head>
 <body>
 <main class="login">
-  <a class="volver" href="./?q=<?= (int) $id ?>">← Volver a reservas</a>
+  <a class="volver" href="./">← Volver a reservas</a>
   <h1>Editar reserva #<?= (int) $id ?></h1>
   <p class="intro"><?= $e($reserva['cabana']) ?> · <?= $e(fecha_larga($reserva['fecha_entrada'])) ?> → <?= $e(fecha_larga($reserva['fecha_salida'])) ?>. Las fechas y montos no se cambian aquí.</p>
 

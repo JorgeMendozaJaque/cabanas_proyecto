@@ -4,6 +4,9 @@ require_once __DIR__ . '/reservas.php';
 // Envía un correo de texto con la API HTTP de Resend. Nunca lanza: un correo fallido no debe deshacer una reserva.
 function enviar_correo(array $para, string $asunto, string $texto): bool
 {
+    // .invalid es un dominio reservado que no existe: lo usan las pruebas, así que nunca llegan a Resend.
+    $para = array_values(array_filter($para, fn($x) => $x && !str_ends_with(strtolower($x), '.invalid')));
+    if (!$para) return false;
     try {
         $c = config()['resend'] ?? [];
         if (empty($c['api_key'])) throw new RuntimeException('falta resend.api_key en config.php');
@@ -15,7 +18,7 @@ function enviar_correo(array $para, string $asunto, string $texto): bool
             CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $c['api_key'], 'Content-Type: application/json'],
             CURLOPT_POSTFIELDS => json_encode([
                 'from' => $c['remitente'],
-                'to' => array_values(array_filter($para)),
+                'to' => $para,
                 'subject' => $asunto,
                 'text' => $texto,
             ]),
