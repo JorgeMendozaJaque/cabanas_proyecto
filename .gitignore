@@ -1,3 +1,5 @@
 config.php
 .DS_Store
 *.log
+# Credenciales: nunca al repo
+DOCS/credenciales*.pdf
