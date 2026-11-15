@@ -19,6 +19,9 @@ const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago
 const limite = sumar(hoy, MAX_DIAS); // la última noche posible es la anterior a este día
 
 let ocupadas = new Set(); // noches no disponibles
+let precios = new Map(); // día → precio especial de esa noche (promo o temporada)
+const precioBase = () => +form.cabana_id.selectedOptions[0].dataset.precio;
+const precioDe = (d) => precios.get(d) ?? precioBase();
 let entrada = null;
 let salida = null;
 let mes = hoy.slice(0, 7);
@@ -43,9 +46,14 @@ async function cargarDisponibilidad() {
   try {
     const r = await fetch('disponibilidad.php?cabana=' + encodeURIComponent(form.cabana_id.value));
     if (!r.ok) throw new Error();
+    const datos = await r.json();
     ocupadas = new Set();
-    for (const { desde, hasta } of await r.json()) {
+    for (const { desde, hasta } of datos.ocupado) {
       for (let d = desde; d < hasta; d = sumar(d, 1)) ocupadas.add(d);
+    }
+    precios = new Map();
+    for (const { desde, hasta, precio } of datos.precios) {
+      for (let d = desde; d <= hasta; d = sumar(d, 1)) precios.set(d, precio); // hasta va incluido
     }
   } catch {
     mostrar('No pudimos cargar la disponibilidad. Recarga la página.', 'error');
@@ -71,11 +79,13 @@ function dibujar() {
     const d = `${mes}-${String(i).padStart(2, '0')}`;
     const elegido = d === entrada || d === salida;
     const clases = [];
+    const promo = libre(d) && precioDe(d) < precioBase();
     if (ocupadas.has(d)) clases.push('ocupado');
+    else if (promo) clases.push('promo');
     if (elegido) clases.push('elegido');
     else if (entrada && salida && d > entrada && d < salida) clases.push('en-rango');
     const habil = libre(d) || salidaValida(d);
-    const estado = ocupadas.has(d) ? ', no disponible' : d < hoy ? '' : ', disponible';
+    const estado = ocupadas.has(d) ? ', no disponible' : d < hoy ? '' : promo ? `, en promoción a ${pesos(precioDe(d))} la noche` : ', disponible';
     html += `<button type="button" class="${clases.join(' ')}" data-dia="${d}" ${habil ? '' : 'disabled'}
       aria-pressed="${elegido}" aria-label="${legible(d)}${estado}">${i}</button>`;
   }
@@ -87,8 +97,8 @@ function dibujar() {
   else if (!salida) resumen.textContent = `Llegada el ${legible(entrada)}. Ahora toca el día de salida.`;
   else {
     const n = noches(entrada, salida);
-    const precio = +form.cabana_id.selectedOptions[0].dataset.precio;
-    const total = n * precio;
+    let total = 0; // noche por noche, igual que el servidor (que es el que cobra)
+    for (let d = entrada; d < salida; d = sumar(d, 1)) total += precioDe(d);
     const abono = Math.ceil((total * form.dataset.abono) / 100);
     resumen.textContent = `Del ${legible(entrada)} al ${legible(salida)}: ${n} ${n === 1 ? 'noche' : 'noches'}, total ${pesos(total)}. Abono para confirmar: ${pesos(abono)}.`;
   }

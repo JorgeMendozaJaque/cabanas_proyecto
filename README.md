@@ -4,10 +4,10 @@ Web simple para pedir reservas de cabañas familiares.
 
 - El cliente elige cabaña, fechas y cantidad de personas, y deja sus datos de contacto. La primera solicitud en llegar aparta las fechas.
 - Al enviarla recibe por correo los datos de transferencia: para confirmar paga un abono del 50% (no reembolsable) dentro de 48 h, y el saldo al llegar.
-- Un administrador acepta o rechaza la solicitud desde un panel privado, que también tiene calendario, ganancias por mes y cierre de días por mantención.
+- Un administrador acepta o rechaza la solicitud desde un panel privado, que también tiene buscador, calendario, ganancias por mes, cierre de días por mantención y precios (general y especiales por fechas, para promos o temporada alta).
 - El cliente recibe cada decisión por correo, y un recordatorio a las 24 h si aún no paga.
 
-No incluye pagos en línea ni precios por temporada.
+No incluye pagos en línea.
 
 ## Tecnología
 

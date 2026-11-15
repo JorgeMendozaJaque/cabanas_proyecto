@@ -2,7 +2,7 @@
 require __DIR__ . '/../../src/admin.php';
 $admin = exigir_admin();
 
-$vista = in_array($_GET['vista'] ?? '', ['dias', 'calendario', 'ganancias'], true) ? $_GET['vista'] : 'reservas';
+$vista = in_array($_GET['vista'] ?? '', ['dias', 'calendario', 'ganancias', 'precios'], true) ? $_GET['vista'] : 'reservas';
 $ano = filter_var($_GET['ano'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 2100]]) ?: (int) substr(hoy_chile(), 0, 4);
 $mes = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $_GET['mes'] ?? '') ? $_GET['mes'] : substr(hoy_chile(), 0, 7);
 $delMes = $vista === 'calendario' ? reservas_del_mes($mes) : [];
@@ -10,8 +10,14 @@ $cerradosMes = $vista === 'calendario' ? bloqueos_del_mes($mes) : [];
 $estado = in_array($_GET['estado'] ?? '', ESTADOS, true) ? $_GET['estado'] : null;
 $conteo = contar_por_estado();
 $bloqueos = listar_bloqueos();
-$reservas = $vista === 'reservas' ? listar_reservas($estado) : [];
-$cabanas = $vista === 'dias' ? db()->query('SELECT id, nombre FROM cabanas ORDER BY id')->fetchAll() : [];
+$buscar = mb_substr(trim(campo_texto($_GET, 'q')), 0, 100);
+$total = $buscar === '' ? ($estado ? (int) ($conteo[$estado] ?? 0) : array_sum($conteo)) : contar_reservas($estado, $buscar);
+$paginas = max(1, (int) ceil($total / POR_PAGINA));
+// Si tras aceptar o rechazar la última lista quedó vacía, muestra la última que exista.
+$pagina = min($paginas, filter_var($_GET['p'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1);
+$enlace = fn(int $p) => '?' . http_build_query(array_filter(['estado' => $estado, 'q' => $buscar, 'p' => $p > 1 ? $p : null]));
+$reservas = $vista === 'reservas' ? listar_reservas($estado, $pagina, $buscar) : [];
+$cabanas = in_array($vista, ['dias', 'precios'], true) ? db()->query('SELECT id, nombre, precio_noche FROM cabanas ORDER BY id')->fetchAll() : [];
 $aviso = tomar_aviso();
 $csrf = token_csrf();
 $ahora = ahora_chile();
@@ -21,12 +27,18 @@ $pesos = pesos(...);
 $fecha = fn($f) => date('d-m-Y', strtotime($f));
 $fechaHora = fn($f) => date('d-m-Y H:i', strtotime($f));
 $MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-// Solo las pendientes tienen acciones: aceptar al recibir el abono o el total, o rechazar.
-$botones = fn(array $r) => [
-    ['aceptar_abono', 'Aceptar · abono ' . $pesos($r['abono']), '¿Recibiste el abono de ' . $pesos($r['abono']) . '? Saldo al llegar: ' . $pesos($r['monto'] - $r['abono']) . '.'],
-    ['aceptar_total', 'Aceptar · pago total ' . $pesos($r['monto']), '¿Recibiste el pago total de ' . $pesos($r['monto']) . '?'],
-    ['rechazar', 'Rechazar', '¿Rechazar esta solicitud? Las fechas quedarán libres.'],
-];
+// Pendientes: aceptar al recibir el abono o el total, o rechazar. Aceptadas con saldo: marcar que pagó el resto.
+$botones = fn(array $r) => match (true) {
+    $r['estado'] === 'pendiente' => [
+        ['aceptar_abono', 'Aceptar · abono ' . $pesos($r['abono']), '¿Recibiste el abono de ' . $pesos($r['abono']) . '? Saldo al llegar: ' . $pesos($r['monto'] - $r['abono']) . '.'],
+        ['aceptar_total', 'Aceptar · pago total ' . $pesos($r['monto']), '¿Recibiste el pago total de ' . $pesos($r['monto']) . '?'],
+        ['rechazar', 'Rechazar', '¿Rechazar esta solicitud? Las fechas quedarán libres.'],
+    ],
+    $r['estado'] === 'aceptada' && $r['pagado'] < $r['monto'] => [
+        ['pagar_saldo', 'Pagó el saldo ' . $pesos($r['monto'] - $r['pagado']), '¿Recibiste el saldo de ' . $pesos($r['monto'] - $r['pagado']) . '?'],
+    ],
+    default => [],
+};
 ?>
 <!doctype html>
 <html lang="es">
@@ -54,6 +66,7 @@ $botones = fn(array $r) => [
   <nav class="pestanas" aria-label="Secciones del panel">
     <a href="./" <?= $vista === 'reservas' ? 'aria-current="page"' : '' ?>>Reservas <span><?= array_sum($conteo) ?></span></a>
     <a href="?vista=dias" <?= $vista === 'dias' ? 'aria-current="page"' : '' ?>>Días cerrados <span><?= count($bloqueos) ?></span></a>
+    <a href="?vista=precios" <?= $vista === 'precios' ? 'aria-current="page"' : '' ?>>Precios</a>
     <a href="?vista=calendario" <?= $vista === 'calendario' ? 'aria-current="page"' : '' ?>>Calendario</a>
     <a href="?vista=ganancias" <?= $vista === 'ganancias' ? 'aria-current="page"' : '' ?>>Ganancias</a>
   </nav>
@@ -65,17 +78,24 @@ $botones = fn(array $r) => [
   <?php if ($vista === 'reservas'): ?>
   <section>
     <h1 class="oculto">Reservas</h1>
+    <form class="buscador" method="get" role="search">
+      <?php if ($estado): ?><input type="hidden" name="estado" value="<?= $e($estado) ?>"><?php endif ?>
+      <label for="buscar" class="oculto">Buscar reserva</label>
+      <input id="buscar" type="search" name="q" value="<?= $e($buscar) ?>" maxlength="100" placeholder="Buscar por nombre, teléfono, correo o N° de reserva">
+      <button type="submit">Buscar</button>
+      <?php if ($buscar !== ''): ?><a href="./<?= $estado ? '?estado=' . $e($estado) : '' ?>">Limpiar</a><?php endif ?>
+    </form>
     <nav class="filtros" aria-label="Filtrar por estado">
-      <a href="./" <?= $estado ? '' : 'aria-current="page"' ?>>Todas <span><?= array_sum($conteo) ?></span></a>
+      <a href="./<?= $buscar !== '' ? '?q=' . $e(urlencode($buscar)) : '' ?>" <?= $estado ? '' : 'aria-current="page"' ?>>Todas <span><?= array_sum($conteo) ?></span></a>
       <?php foreach (ESTADOS as $est): ?>
-        <a href="?estado=<?= $e($est) ?>" <?= $estado === $est ? 'aria-current="page"' : '' ?>>
+        <a href="?<?= $e(http_build_query(array_filter(['estado' => $est, 'q' => $buscar]))) ?>" <?= $estado === $est ? 'aria-current="page"' : '' ?>>
           <?= $e(ucfirst($est)) ?> <span><?= (int) ($conteo[$est] ?? 0) ?></span>
         </a>
       <?php endforeach ?>
     </nav>
 
     <?php if (!$reservas): ?>
-      <p class="vacio">No hay reservas<?= $estado ? ' en estado ' . $e($estado) : '' ?>.</p>
+      <p class="vacio">No hay reservas<?= $estado ? ' en estado ' . $e($estado) : '' ?><?= $buscar !== '' ? ' que coincidan con «' . $e($buscar) . '»' : '' ?>.</p>
     <?php endif ?>
 
     <div class="lista-reservas">
@@ -114,12 +134,15 @@ $botones = fn(array $r) => [
               <dt>Teléfono 2</dt><dd><?= $r['telefono2'] ? '<a href="tel:' . $e($r['telefono2']) . '">' . $e($r['telefono2']) . '</a>' : '—' ?></dd>
               <dt>Correo 2</dt><dd><?= $r['email2'] ? '<a href="mailto:' . $e($r['email2']) . '">' . $e($r['email2']) . '</a>' : '—' ?></dd>
               <dt>Solicitada</dt><dd><?= $fechaHora($r['creada_en']) ?></dd>
+              <dd class="reserva-editar"><a href="editar.php?id=<?= (int) $r['id'] ?>">✏️ Editar datos</a></dd>
             </dl>
           </details>
           <?php if ($r['estado'] === 'pendiente'): ?>
             <p class="reserva-plazo <?= $vence < $ahora ? 'vencido' : '' ?>">
               <?= $vence < $ahora ? 'Plazo del abono vencido el' : 'Plazo del abono hasta el' ?> <?= $fechaHora($vence) ?>
             </p>
+          <?php endif ?>
+          <?php if ($botones($r)): ?>
             <div class="reserva-acciones">
               <?php foreach ($botones($r) as [$accion, $texto, $confirmar]): ?>
                 <form method="post" action="accion.php" <?= $confirmar ? 'onsubmit="return confirm(' . $e(json_encode($confirmar)) . ')"' : '' ?>>
@@ -127,6 +150,8 @@ $botones = fn(array $r) => [
                   <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                   <input type="hidden" name="accion" value="<?= $e($accion) ?>">
                   <input type="hidden" name="volver" value="<?= $e($estado ?? '') ?>">
+                  <input type="hidden" name="p" value="<?= $pagina ?>">
+                  <input type="hidden" name="q" value="<?= $e($buscar) ?>">
                   <button type="submit" class="accion-<?= $e($accion) ?>"><?= $e($texto) ?></button>
                 </form>
               <?php endforeach ?>
@@ -135,6 +160,14 @@ $botones = fn(array $r) => [
         </article>
       <?php endforeach ?>
     </div>
+
+    <?php if ($paginas > 1): ?>
+      <nav class="filtros paginas" aria-label="Listas de reservas">
+        <?php for ($p = 1; $p <= $paginas; $p++): ?>
+          <a href="<?= $e($enlace($p)) ?>" <?= $p === $pagina ? 'aria-current="page"' : '' ?> aria-label="Lista <?= $p ?>"><?= $p ?></a>
+        <?php endfor ?>
+      </nav>
+    <?php endif ?>
   </section>
 
   <?php elseif ($vista === 'ganancias'):
@@ -220,7 +253,11 @@ $botones = fn(array $r) => [
             <?php if ($r['estado'] === 'pendiente'): ?><span class="estado estado-pendiente">pendiente de pago</span><?php endif ?>
             <span>Llega el <?= $diaSemana($r['fecha_entrada']) ?> <?= $fecha($r['fecha_entrada']) ?></span>
             <span>Se va el <?= $diaSemana($r['fecha_salida']) ?> <?= $fecha($r['fecha_salida']) ?></span>
-            <span><?= $noches ?> <?= $noches === 1 ? 'noche' : 'noches' ?> · <?= (int) $r['personas'] ?> pers. · <?= $e($r['cabana']) ?> · <a href="tel:<?= $e($r['telefono']) ?>"><?= $e($r['telefono']) ?></a></span>
+            <details>
+              <summary>Ver más</summary>
+              <span><?= $noches ?> <?= $noches === 1 ? 'noche' : 'noches' ?> · <?= (int) $r['personas'] ?> pers. · <?= $e($r['cabana']) ?></span>
+              <span><a href="tel:<?= $e($r['telefono']) ?>"><?= $e($r['telefono']) ?></a></span>
+            </details>
           </li>
         <?php endforeach ?>
       </ul>
@@ -259,7 +296,7 @@ $botones = fn(array $r) => [
               if ($f < $r['fecha_entrada'] || $f > $r['fecha_salida']) continue;
             ?>
               <span class="cal-admin-cliente <?= $color($r) ?> <?= $r['estado'] === 'pendiente' ? 'pendiente' : '' ?>" title="<?= $e($r['nombre'] . ' · ' . $r['cabana']) ?>">
-                <?php if ($f === $r['fecha_entrada']): ?><b>Llega</b> <?php elseif ($f === $r['fecha_salida']): ?><b>Se va</b> <?php endif ?><?= $e($r['nombre']) ?>
+                <?php if ($f === $r['fecha_entrada']): ?><b>Llega</b> <?php elseif ($f === $r['fecha_salida']): ?><b>Se va</b> <?php endif ?><?= $e(strtok($r['nombre'], ' ')) ?>
               </span>
             <?php endforeach ?>
           </td>
@@ -267,6 +304,89 @@ $botones = fn(array $r) => [
         <?php for ($i = (int) date('N', strtotime("$mes-" . $primero->format('t'))); $i < 7; $i++): ?><td class="fuera"></td><?php endfor ?>
       </tr></tbody>
     </table>
+  </section>
+
+  <?php elseif ($vista === 'precios'): $precios = listar_precios(); ?>
+  <section class="admin-bloqueos">
+    <h1 class="oculto">Precios</h1>
+
+    <h2>Precio general por noche</h2>
+    <p class="intro">Es el precio de los días sin precio especial. Al cambiarlo, solo cambian las reservas nuevas: las que ya existen mantienen su monto.</p>
+    <?php foreach ($cabanas as $c): ?>
+      <form method="post" action="precios.php" class="tarjeta form-bloqueo form-precio" data-actual="<?= (int) $c['precio_noche'] ?>">
+        <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
+        <input type="hidden" name="accion" value="base">
+        <input type="hidden" name="cabana_id" value="<?= (int) $c['id'] ?>">
+        <label><?= $e($c['nombre']) ?> <span class="opcional">(ahora <?= $pesos($c['precio_noche']) ?>)</span>
+          <input name="precio" value="<?= (int) $c['precio_noche'] ?>" inputmode="numeric" required>
+        </label>
+        <button type="submit">Guardar</button>
+      </form>
+    <?php endforeach ?>
+
+    <h2>Precios especiales por fechas</h2>
+    <p class="intro">Para promos (más barato) o temporada alta (más caro). Cada noche entre esas fechas cuesta este precio en vez del general. No se pueden cruzar dos en la misma cabaña.</p>
+    <div class="precios-editor">
+    <form method="post" action="precios.php" class="tarjeta form-bloqueo" id="form-precio-especial">
+      <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
+      <input type="hidden" name="accion" value="crear">
+      <label>Cabaña
+        <select name="cabana_id" required>
+          <?php foreach ($cabanas as $c): ?><option value="<?= (int) $c['id'] ?>"><?= $e($c['nombre']) ?> · general <?= $pesos($c['precio_noche']) ?></option><?php endforeach ?>
+        </select>
+      </label>
+      <div class="fila">
+        <label>Desde <input type="date" name="fecha_inicio" min="<?= $e(hoy_chile()) ?>" required></label>
+        <label>Hasta (inclusive) <input type="date" name="fecha_fin" min="<?= $e(hoy_chile()) ?>" required></label>
+      </div>
+      <div class="fila">
+        <label>Precio por noche <input name="precio" inputmode="numeric" placeholder="50.000" required></label>
+        <label>Nombre <span class="opcional">(opcional, solo lo ves tú)</span> <input name="motivo" maxlength="200" placeholder="Promo invierno"></label>
+      </div>
+      <button type="submit">Guardar precio especial</button>
+    </form>
+
+    <div class="tarjeta mini-cal">
+      <div id="mini-cal" class="calendario" aria-live="polite"></div>
+      <p class="leyenda">
+        <span class="muestra ocupado"></span>Con huéspedes <span class="muestra cerrado"></span>Cerrado
+        <span class="muestra especial"></span>Precio especial <span class="muestra especial pasado"></span>Ya terminó
+        <span class="muestra elegido"></span>Tu selección
+      </p>
+      <p id="aviso-precio" class="mensaje" role="status"></p>
+    </div>
+    </div>
+    <!-- Datos del mini calendario: solo fechas, sin datos de clientes. -->
+    <script type="application/json" id="datos-precios"><?= json_encode([
+        'hoy' => hoy_chile(),
+        'reservas' => reservas_activas_futuras(),
+        'cerrados' => array_map(fn($b) => [$b['cabana_id'], $b['fecha_inicio'], $b['fecha_fin']], $bloqueos),
+        'precios' => precios_para_calendario(),
+    ], JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <script src="precios.js"></script>
+
+    <?php if ($precios): ?>
+      <ul class="lista-bloqueos">
+        <?php foreach ($precios as $p): ?>
+          <li>
+            <div>
+              <strong><?= $fecha($p['fecha_inicio']) ?> → <?= $fecha($p['fecha_fin']) ?></strong> · <?= $e($p['cabana']) ?>
+              <br><strong class="<?= $p['precio_noche'] < $p['precio_base'] ? 'precio-promo' : 'precio-alto' ?>"><?= $pesos($p['precio_noche']) ?> por noche</strong>
+              <span class="opcional">(general <?= $pesos($p['precio_base']) ?>)</span>
+              <?php if ($p['motivo']): ?><br><span class="opcional"><?= $e($p['motivo']) ?></span><?php endif ?>
+            </div>
+            <form method="post" action="precios.php" onsubmit="return confirm('¿Borrar este precio especial? Esos días vuelven al precio general.')">
+              <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
+              <input type="hidden" name="accion" value="borrar">
+              <input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
+              <button type="submit" class="accion-reabrir">Borrar</button>
+            </form>
+          </li>
+        <?php endforeach ?>
+      </ul>
+    <?php else: ?>
+      <p class="vacio">No hay precios especiales.</p>
+    <?php endif ?>
   </section>
 
   <?php else: ?>

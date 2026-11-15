@@ -4,7 +4,7 @@ Contexto para retomar el trabajo en una sesión nueva. Leer completo antes de em
 
 ## Qué es
 
-Una web donde los clientes piden reservas de cabañas familiares y un admin las acepta o rechaza desde un panel privado. Cada decisión le llega al cliente por correo. El pago es siempre por transferencia bancaria, fuera del sistema. No hay precios dinámicos ni pagos en línea.
+Una web donde los clientes piden reservas de cabañas familiares y un admin las acepta o rechaza desde un panel privado. Cada decisión le llega al cliente por correo. El pago es siempre por transferencia bancaria, fuera del sistema. No hay pagos en línea. Los precios por temporada se manejan con precios especiales por fechas (pestaña Precios).
 
 ## Stack (decidido)
 
@@ -53,6 +53,8 @@ No funcionales: debe funcionar bien en el celular, tener costo mínimo, permitir
 **reservas**: `id int auto_increment pk`, `cabana_id int fk`, `nombre`, `ciudad`, `telefono` y `email varchar`, `telefono2` y `email2 varchar null` (opcionales), `fecha_entrada date`, `fecha_salida date` (no cuenta como noche), `personas int`, `monto int` (noches × precio_noche, en CLP), `estado enum('pendiente','aceptada','rechazada','pagada','cancelada')`, `creada_en timestamp`.
 
 **bloqueos** (días cerrados por el admin): `id int auto_increment pk`, `cabana_id int fk`, `fecha_inicio date`, `fecha_fin date` (ambos días cerrados, inclusive), `motivo varchar null`, `creado_en timestamp`. Reabrir días = borrar el bloqueo.
+
+**precios** (precios especiales por fechas, promo o temporada alta): `id`, `cabana_id fk`, `fecha_inicio date`, `fecha_fin date` (inclusive), `precio_noche int` (CLP), `motivo varchar null` (solo lo ve el admin), `creado_en`. No se cruzan dentro de una cabaña. Cada noche cuesta su precio especial o, si no tiene, `cabanas.precio_noche`; el servidor suma noche por noche al guardar la reserva, y el monto queda fijo aunque después cambien los precios.
 
 **admins**: `id int auto_increment pk`, `email varchar unique`, `password_hash varchar`. Las contraseñas se guardan con `password_hash()` de PHP, nunca en texto plano.
 
@@ -107,7 +109,7 @@ Se avanza parte por parte. Cada una termina con algo que se puede probar, y el u
 
 En desarrollo se usa el servidor que trae PHP: `php -S localhost:8000 -t public`.
 
-Queda fuera, a propósito: precios por temporada, cancelación automática, WhatsApp y pago en línea.
+Queda fuera, a propósito: cancelación automática, WhatsApp y pago en línea.
 
 ## Estado actual
 
@@ -131,4 +133,6 @@ Queda fuera, a propósito: precios por temporada, cancelación automática, What
 - **MVP para testers:** `cloudflared tunnel --url http://localhost:8000` (instalado con winget) da un enlace público `*.trycloudflare.com` al azar, que cambia en cada inicio. Requiere el PC prendido con MariaDB, PHP y el túnel.
 - **Auditoría (14-11-2026), ya arreglado:** PHP y MySQL usan la misma zona horaria de Chile (`src/db.php`; antes, en un hosting en UTC el plazo de pago salía 3 h corrido); las pruebas solo corren desde la terminal; el panel envía `X-Frame-Options: DENY` y `nosniff`; la sesión del cliente quedó en `sesion_reserva()`; con PHP-FPM los correos se envían después de responder al cliente.
 - **Pendiente de la auditoría para la Parte 5:** captcha (Turnstile) en el formulario de reserva **y en el login del admin** (hoy el login solo espera 1 s por intento); en el hosting, forzar HTTPS con HSTS, `display_errors=Off` y respaldo automático de la base.
+- **Panel (15-11-2026):** Reservas en listas de 6 con buscador (nombre, teléfono, correo o N°) y "Editar datos" de contacto (nunca fechas ni montos, y no se eliminan reservas); botón "Pagó el saldo" en aceptadas; pestaña **Precios** con precio general por cabaña y precios especiales por fechas, marcados como "Promoción" en el calendario del formulario. Ganancias reparte el monto en partes iguales por noche (aproximado por mes si hay precio especial). Landing con "Qué tiene la cabaña".
+- **En el Mac hay que crear la tabla de precios:** `mysql -u root cabanas -e "CREATE TABLE precios (id INT AUTO_INCREMENT PRIMARY KEY, cabana_id INT NOT NULL, fecha_inicio DATE NOT NULL, fecha_fin DATE NOT NULL, precio_noche INT NOT NULL CHECK (precio_noche > 0), motivo VARCHAR(200) NULL, creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (cabana_id) REFERENCES cabanas(id), CHECK (fecha_fin >= fecha_inicio), INDEX (cabana_id, fecha_inicio)) ENGINE=InnoDB;"`
 - **Siguiente paso: Parte 5 (captcha, hosting, dominio y verificarlo en Resend).**

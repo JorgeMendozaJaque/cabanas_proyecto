@@ -71,6 +71,21 @@ function dias_entre(string $desde, string $hasta): int
 function validar_reserva(array $r): ?string
 {
     if (!$r['cabana_id']) return 'Elige una cabaña.';
+    if ($error = validar_contacto($r)) return $error;
+
+    if (!fecha_valida($r['fecha_entrada']) || !fecha_valida($r['fecha_salida'])) return 'Elige las fechas en el calendario.';
+    $hoy = hoy_chile();
+    if ($r['fecha_entrada'] < $hoy) return 'La fecha de llegada ya pasó.';
+    $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
+    if ($noches < 1) return 'La salida debe ser después de la llegada.';
+    if ($noches > MAX_NOCHES) return 'La estadía máxima es de ' . MAX_NOCHES . ' noches.';
+    if (dias_entre($hoy, $r['fecha_salida']) > MAX_DIAS_ANTICIPACION) return 'Solo se puede reservar hasta un año hacia adelante.';
+    return null;
+}
+
+// Personas y datos de contacto: los usa el formulario público y la edición del panel.
+function validar_contacto(array $r): ?string
+{
     if (!$r['personas'] || $r['personas'] < 1) return 'Indica cuántas personas vienen.';
     // Letras de cualquier idioma (tildes, ñ), espacios, apóstrofo, punto y guion. Sin números.
     $letras = "/^\p{L}[\p{L} '.-]*$/u";
@@ -86,14 +101,6 @@ function validar_reserva(array $r): ?string
         $v = $r[$campo];
         if (($campo === 'email' || $v !== null) && (strlen($v ?? '') > 254 || !filter_var($v, FILTER_VALIDATE_EMAIL))) return $msg;
     }
-
-    if (!fecha_valida($r['fecha_entrada']) || !fecha_valida($r['fecha_salida'])) return 'Elige las fechas en el calendario.';
-    $hoy = hoy_chile();
-    if ($r['fecha_entrada'] < $hoy) return 'La fecha de llegada ya pasó.';
-    $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
-    if ($noches < 1) return 'La salida debe ser después de la llegada.';
-    if ($noches > MAX_NOCHES) return 'La estadía máxima es de ' . MAX_NOCHES . ' noches.';
-    if (dias_entre($hoy, $r['fecha_salida']) > MAX_DIAS_ANTICIPACION) return 'Solo se puede reservar hasta un año hacia adelante.';
     return null;
 }
 
@@ -107,11 +114,11 @@ function campo_texto(array $datos, string $k): string
     return is_scalar($datos[$k] ?? null) ? trim((string) $datos[$k]) : '';
 }
 
-function crear_reserva(array $datos): array
+// Personas y datos de contacto tal como llegan de un formulario, limpios para validar y guardar.
+function leer_contacto(array $datos): array
 {
     $texto = fn(string $k) => campo_texto($datos, $k);
-    $r = [
-        'cabana_id' => filter_var($datos['cabana_id'] ?? null, FILTER_VALIDATE_INT),
+    return [
         'personas' => filter_var($datos['personas'] ?? null, FILTER_VALIDATE_INT),
         'nombre' => preg_replace('/ {2,}/', ' ', $texto('nombre')),
         'ciudad' => preg_replace('/ {2,}/', ' ', $texto('ciudad')),
@@ -119,8 +126,14 @@ function crear_reserva(array $datos): array
         'telefono2' => $texto('telefono2') ?: null,
         'email' => $texto('email'),
         'email2' => $texto('email2') ?: null,
-        'fecha_entrada' => $texto('fecha_entrada'),
-        'fecha_salida' => $texto('fecha_salida'),
+    ];
+}
+
+function crear_reserva(array $datos): array
+{
+    $r = ['cabana_id' => filter_var($datos['cabana_id'] ?? null, FILTER_VALIDATE_INT)] + leer_contacto($datos) + [
+        'fecha_entrada' => campo_texto($datos, 'fecha_entrada'),
+        'fecha_salida' => campo_texto($datos, 'fecha_salida'),
     ];
     if ($error = validar_reserva($r)) return ['ok' => false, 'error' => $error];
 
@@ -150,7 +163,7 @@ function crear_reserva(array $datos): array
         }
 
         $noches = dias_entre($r['fecha_entrada'], $r['fecha_salida']);
-        $r['monto'] = $noches * $cabana['precio_noche'];
+        $r['monto'] = precio_estadia($r['cabana_id'], $cabana['precio_noche'], $r['fecha_entrada'], $r['fecha_salida']);
         $r['abono'] = abono($r['monto']);
         $db->prepare(
             'INSERT INTO reservas (cabana_id, nombre, ciudad, telefono, telefono2, email, email2, fecha_entrada, fecha_salida, personas, monto, abono)
@@ -162,6 +175,30 @@ function crear_reserva(array $datos): array
     } finally {
         if ($db->inTransaction()) $db->rollBack();
     }
+}
+
+// Total de una estadía: cada noche cuesta su precio especial si cae en uno, o el precio base de la cabaña.
+function precio_estadia(int $cabana_id, int $precio_base, string $entrada, string $salida): int
+{
+    $st = db()->prepare('SELECT fecha_inicio, fecha_fin, precio_noche FROM precios WHERE cabana_id = ? AND fecha_inicio < ? AND fecha_fin >= ?');
+    $st->execute([$cabana_id, $salida, $entrada]);
+    $especiales = $st->fetchAll();
+    $total = 0;
+    for ($f = new DateTimeImmutable($entrada, new DateTimeZone('UTC')); ($dia = $f->format('Y-m-d')) < $salida; $f = $f->modify('+1 day')) {
+        $precio = $precio_base;
+        foreach ($especiales as $p) if ($dia >= $p['fecha_inicio'] && $dia <= $p['fecha_fin']) $precio = $p['precio_noche'];
+        $total += $precio;
+    }
+    return $total;
+}
+
+// Precios especiales desde hoy, días inclusive. Es público: sin el motivo.
+function precios_especiales(int $cabana_id): array
+{
+    $st = db()->prepare('SELECT fecha_inicio AS desde, fecha_fin AS hasta, precio_noche AS precio FROM precios
+                         WHERE cabana_id = ? AND fecha_fin >= ? ORDER BY fecha_inicio');
+    $st->execute([$cabana_id, hoy_chile()]);
+    return $st->fetchAll();
 }
 
 // Rangos ocupados o cerrados desde hoy, como noches [desde, hasta). Sin datos de clientes.

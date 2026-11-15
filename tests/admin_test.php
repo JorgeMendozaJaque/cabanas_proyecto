@@ -22,6 +22,7 @@ function limpiar(): void
     global $C;
     db()->exec("DELETE FROM reservas WHERE cabana_id = $C");
     db()->exec("DELETE FROM bloqueos WHERE cabana_id = $C");
+    db()->exec("DELETE FROM precios WHERE cabana_id = $C");
     db()->exec("DELETE FROM reservas WHERE email LIKE '%@test.invalid'");
     db()->exec("DELETE FROM bloqueos WHERE motivo = 'test'");
     db()->exec("DELETE FROM admins WHERE email LIKE '%@test.invalid'");
@@ -46,14 +47,45 @@ try {
     chequear(!cambiar_estado($a, 'aceptar_total'), 'no se acepta dos veces');
     chequear(!cambiar_estado($a, 'rechazar'), 'una aceptada no se puede rechazar');
 
+    $aceptadaEn = db()->query("SELECT aceptada_en FROM reservas WHERE id = $a")->fetchColumn();
+    db()->exec("UPDATE reservas SET aceptada_en = '2000-01-01' WHERE id = $a");
+    chequear(cambiar_estado($a, 'pagar_saldo') && $fila($a)['pagado'] === 240000 && $fila($a)['estado'] === 'aceptada', 'pagó el saldo: pagado = total y sigue aceptada');
+    chequear(db()->query("SELECT aceptada_en FROM reservas WHERE id = $a")->fetchColumn() === '2000-01-01 00:00:00' && $aceptadaEn, 'pagar el saldo no cambia la hora de aceptación');
+    chequear(!cambiar_estado($a, 'pagar_saldo'), 'no se marca el saldo dos veces');
+
     $t = $reservar(215, 217);
     chequear(cambiar_estado($t, 'aceptar_total') && $fila($t)['pagado'] === $fila($t)['monto'], 'aceptar con pago total: pagado = total');
 
     $b = $reservar(205, 207);
     chequear(cambiar_estado($b, 'rechazar') && $fila($b)['estado'] === 'rechazada' && $fila($b)['pagado'] === null, 'pendiente → rechazada, sin pago');
     chequear(!cambiar_estado($b, 'aceptar_abono'), 'una rechazada no se puede aceptar');
+    chequear(!cambiar_estado($b, 'pagar_saldo') && !cambiar_estado($reservar(225, 226), 'pagar_saldo'), 'solo una aceptada puede pagar el saldo');
     chequear((bool) $reservar(205, 207), 'las fechas de una rechazada quedan libres');
     chequear(!cambiar_estado($b, 'pagada') && !cambiar_estado($b, 'cancelar') && !cambiar_estado($b, 'borrar'), 'rechaza acciones que ya no existen');
+
+    echo "Listas de " . POR_PAGINA . " en el panel\n";
+    for ($i = 0; $i < POR_PAGINA; $i++) $reservar(240 + $i * 4, 241 + $i * 4); // con las de arriba ya son más de 6
+    $l1 = array_column(listar_reservas(null, 1), 'id');
+    $l2 = array_column(listar_reservas(null, 2), 'id');
+    chequear(count($l1) === POR_PAGINA && $l2, 'la lista 1 trae ' . POR_PAGINA . ' y el resto pasa a la lista 2');
+    chequear(!array_intersect($l1, $l2), 'ninguna reserva sale en dos listas');
+    chequear(max($l2) < min($l1), 'las más nuevas van en la lista 1');
+
+    echo "Buscar y editar datos de contacto\n";
+    $x = $reservar(350, 352); // lejos de las fechas que usan el calendario y las ganancias (+290 a +330)
+    $contacto = ['personas' => 3, 'nombre' => 'José Pérez', 'ciudad' => 'Valdivia', 'telefono' => '+56911112222', 'email' => 'jose@test.invalid'];
+    chequear(editar_contacto($x, $contacto) === null, 'guarda los datos corregidos');
+    $g = db()->query("SELECT nombre, ciudad, personas, email, email2, fecha_entrada, monto, estado FROM reservas WHERE id = $x")->fetch();
+    chequear($g['nombre'] === 'José Pérez' && $g['ciudad'] === 'Valdivia' && $g['personas'] === 3 && $g['email2'] === null, 'cambia nombre, ciudad, personas y deja vacío el correo 2');
+    chequear($g["fecha_entrada"] === $d(350) && $g['monto'] === 160000 && $g['estado'] === 'pendiente', 'no toca fechas, monto ni estado');
+    chequear(editar_contacto($x, ['personas' => 7] + $contacto) !== null, 'rechaza más personas que la capacidad');
+    chequear(editar_contacto($x, ['email' => 'malo'] + $contacto) !== null && editar_contacto($x, ['ciudad' => 'Narnia'] + $contacto) !== null, 'valida igual que el formulario');
+    chequear(editar_contacto(999999999, $contacto) !== null, 'rechaza una reserva que no existe');
+    $ids = fn(string $q) => array_column(listar_reservas(null, 1, $q), 'id');
+    chequear(in_array($x, $ids('jose perez')), 'busca sin importar mayúsculas ni tildes');
+    chequear(in_array($x, $ids('11112222')) && in_array($x, $ids('JOSE@test')) && in_array($x, $ids("#$x")), 'busca por teléfono, correo y N° de reserva');
+    chequear(!in_array($x, $ids('%')) || contar_reservas(null, '%') === 0, 'el % se busca como texto, no como comodín');
+    chequear(contar_reservas('rechazada', 'jose perez') === 0 && contar_reservas('pendiente', 'jose perez') >= 1, 'la búsqueda respeta el filtro de estado');
 
     echo "Abono\n";
     chequear(abono(240000) === 120000 && abono(80001) === 40001 && abono(1) === 1, 'el abono redondea hacia arriba al peso');
@@ -124,6 +156,30 @@ try {
     chequear($a2['monto'] - $a0['monto'] === 80000 && $a2['noches'] - $a0['noches'] === 1, 'estadía entre dos meses: 1 noche al primero');
     chequear($b2['monto'] - $b0['monto'] === 160000 && $b2['noches'] - $b0['noches'] === 2 && $b2['reservas'] - $b0['reservas'] === 1, 'y 2 noches al segundo, contada como 1 reserva');
     chequear(($a2['detalle'][$cruza]['monto_mes'] ?? 0) === 80000 && ($b2['detalle'][$cruza]['noches_mes'] ?? 0) === 2, 'el resumen del mes detalla lo que aportó cada reserva');
+
+    echo "Precios (al final: cambian el precio de la cabaña de prueba)\n";
+    $precio = fn(int $desde, int $hasta, $valor, array $extra = []) =>
+        crear_precio($extra + ['cabana_id' => $C, 'fecha_inicio' => $d($desde), 'fecha_fin' => $d($hasta), 'precio' => $valor, 'motivo' => 'test']);
+    $monto = fn(int $id) => (int) db()->query("SELECT monto FROM reservas WHERE id = $id")->fetchColumn();
+    chequear($precio(101, 102, '$50.000') === null, 'guarda una promo (acepta "$50.000" con punto y signo)');
+    chequear($precio(102, 104, 100000) !== null, 'no deja cruzar dos precios especiales');
+    chequear($precio(103, 104, 100000) === null, 'sí deja uno que empieza al día siguiente');
+    chequear($precio(110, 111, 500) !== null && $precio(110, 111, 'abc') !== null, 'rechaza precios menores a $1.000 o que no son números');
+    chequear($precio(110, 109, 50000) !== null && $precio(-5, -3, 50000) !== null, 'rechaza fechas al revés o pasadas');
+    // Noches +100 a +104: 80.000 (general) + 50.000 + 50.000 (promo) + 100.000 (alta) = 280.000
+    $conPromo = $reservar(100, 104);
+    chequear($monto($conPromo) === 280000, 'cobra cada noche a su precio: general, promo y temporada alta');
+    chequear(db()->query("SELECT abono FROM reservas WHERE id = $conPromo")->fetchColumn() === 140000, 'el abono es el 50% del total con promo');
+    chequear(precio_estadia($C, 80000, $d(101), $d(103)) === 100000, 'el último día de la promo va incluido');
+    $publico = precios_especiales($C);
+    chequear(count($publico) === 2 && !isset($publico[0]['motivo']), 'el calendario público recibe los precios sin el nombre');
+
+    chequear(cambiar_precio_base(['cabana_id' => $C, 'precio' => '90.000']) === null, 'cambia el precio general');
+    chequear($monto($conPromo) === 280000, 'las reservas que ya existen mantienen su monto');
+    chequear($monto($reservar(120, 122)) === 180000, 'las nuevas usan el precio general nuevo');
+    chequear(cambiar_precio_base(['cabana_id' => $C, 'precio' => '0']) !== null && cambiar_precio_base(['cabana_id' => 999999, 'precio' => 80000]) !== null, 'rechaza precio 0 y cabaña inexistente');
+    $id = (int) db()->query("SELECT id FROM precios WHERE cabana_id = $C ORDER BY id LIMIT 1")->fetchColumn();
+    chequear(borrar_precio($id) && !borrar_precio($id), 'borra un precio especial una sola vez');
 
     echo "Login\n";
     db()->prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)')

@@ -10,7 +10,7 @@ if (!$cabana) {
 }
 
 try {
-    echo json_encode(dias_ocupados($cabana));
+    echo json_encode(['ocupado' => dias_ocupados($cabana), 'precios' => precios_especiales($cabana)]);
 } catch (Throwable $e) {
     error_log((string) $e);
     http_response_code(500);

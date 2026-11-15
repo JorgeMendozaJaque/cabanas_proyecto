@@ -73,7 +73,7 @@ $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         </div>
 
         <div id="calendario" class="calendario" aria-live="polite"></div>
-        <p class="leyenda"><span class="muestra libre"></span>Disponible <span class="muestra ocupado"></span>No disponible <span class="muestra elegido"></span>Tu estadía</p>
+        <p class="leyenda"><span class="muestra libre"></span>Disponible <span class="muestra ocupado"></span>No disponible <span class="muestra promo"></span>Promoción <span class="muestra elegido"></span>Tu estadía</p>
         <p id="resumen" class="resumen" aria-live="polite"></p>
         <input type="hidden" name="fecha_entrada">
         <input type="hidden" name="fecha_salida">

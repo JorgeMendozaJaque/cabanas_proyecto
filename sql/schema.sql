@@ -47,6 +47,20 @@ CREATE TABLE bloqueos (
   INDEX (cabana_id, fecha_inicio)
 ) ENGINE=InnoDB;
 
+-- Precios especiales por fechas (promos o temporada alta). Ambos días incluidos; no se cruzan dentro de una cabaña.
+CREATE TABLE precios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cabana_id INT NOT NULL,
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  precio_noche INT NOT NULL CHECK (precio_noche > 0), -- CLP
+  motivo VARCHAR(200) NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cabana_id) REFERENCES cabanas(id),
+  CHECK (fecha_fin >= fecha_inicio),
+  INDEX (cabana_id, fecha_inicio)
+) ENGINE=InnoDB;
+
 CREATE TABLE admins (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(254) NOT NULL UNIQUE,
